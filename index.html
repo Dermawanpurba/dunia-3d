@@ -51,7 +51,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:c
     <a class="linkpill" href="https://www.aiuntuksemua.my.id" target="_blank" rel="noopener">AI Untuk Semua</a>
   </div>
 </header>
-<div class="hint" id="hint">Ketuk tanah supaya avatar berjalan &bull; Seret untuk memutar &bull; Ketuk avatar &amp; ikon</div>
+<div class="hint" id="hint">Ketuk tanah / ikon: avatar berjalan ke sana &bull; WASD untuk jalan</div>
 <div class="world active" id="world1"><canvas id="c1"></canvas></div>
 <div class="world" id="world2"><canvas id="c2"></canvas></div>
 <section id="panel">
@@ -331,11 +331,20 @@ function buildWorld1(){
   botG.add(cyl(0.03,0.03,0.3,0x3d4a6b,0,0.4,0));
   botG.add(ball(0.07,0xff8f6b,0,0.58,0));
   hotspot('ai',3.2,-2.9,botG,'AI & Web');
-  orbit1=createOrbit($('c1'),camera1,new THREE.Vector3(0,1.0,0),{theta:0.5,phi:1.12,radius:12.5,minR:8,maxR:24,onTap:function(e){
+  const target1=new THREE.Vector3(0,1.0,0);
+  W1.target=target1;
+  orbit1=createOrbit($('c1'),camera1,target1,{theta:0.5,phi:1.12,radius:12.5,minR:8,maxR:24,onTap:function(e){
     const hit=pick(e,$('c1'),camera1,W1.clickables);
     if(hit){
       if(hit.userData.key==='avatar'){wave();showInfo('avatar');}
-      else showInfo(hit.userData.key);
+      else{
+        const hx=hit.position.x,hz=hit.position.z;
+        const hd=Math.hypot(hx,hz),hs=Math.max(0,(hd-1.2)/hd);
+        const sx=hx*hs,sz=hz*hs;
+        const ad=Math.hypot(sx-avatar.group.position.x,sz-avatar.group.position.z);
+        if(ad<0.6)showInfo(hit.userData.key);
+        else walkTo(sx,sz,hit.userData.key);
+      }
       return;
     }
     const pt=groundPoint(e,$('c1'),camera1);
@@ -458,7 +467,7 @@ function buildWorld2(){
 
 /* ---------- avatar berjalan ---------- */
 const WALK_SPEED=2.2;
-let walkTarget=null,walkPhase=0;
+let walkTarget=null,walkPhase=0,pendingInfo=null;
 const KEYS={};
 window.addEventListener('keydown',function(e){KEYS[e.key.toLowerCase()]=true;});
 window.addEventListener('keyup',function(e){KEYS[e.key.toLowerCase()]=false;});
@@ -469,7 +478,7 @@ function groundPoint(e,canvas,camera){
   const hits=_rc.intersectObject(W1.islandTop,true);
   return hits.length?hits[0].point:null;
 }
-function walkTo(x,z){
+function walkTo(x,z,infoKey){
   let px=x,pz=z;
   const d=Math.hypot(px,pz);
   if(d>5.2){px*=5.2/d;pz*=5.2/d;}
@@ -477,8 +486,10 @@ function walkTo(x,z){
     const dx=px-tr.position.x,dz=pz-tr.position.z,dd=Math.hypot(dx,dz);
     if(dd<1.0&&dd>0.001){px=tr.position.x+dx/dd;pz=tr.position.z+dz/dd;}
   });
+  pendingInfo=null;
   if(waveT>=0){avatar.armR.rotation.z=0;avatar.head.rotation.z=0;waveT=-1;}
   walkTarget={x:px,z:pz};
+  if(infoKey)pendingInfo=infoKey;
 }
 
 /* ---------- animasi, tab, resize ---------- */
@@ -493,6 +504,7 @@ function resizeActive(){
   if(active==='w2'&&renderer2){renderer2.setSize(w,h,false);camera2.aspect=w/h;camera2.updateProjectionMatrix();if(orbit2)orbit2.setRadius(13*boost);}
 }
 function switchWorld(w){
+  walkTarget=null;pendingInfo=null;
   active=w;
   $('world1').classList.toggle('active',w==='w1');
   $('world2').classList.toggle('active',w==='w2');
@@ -505,7 +517,7 @@ function switchWorld(w){
 }
 function hintFor(w){
   const short=innerWidth<640;
-  if(w==='w1')return short?'Ketuk tanah supaya avatar berjalan':'Ketuk tanah / WASD supaya avatar berjalan • Seret untuk memutar • Ketuk avatar & ikon untuk info • Cubit / scroll untuk zoom';
+  if(w==='w1')return short?'Ketuk tanah / ikon: avatar berjalan ke sana':'Ketuk tanah atau ikon — avatar berjalan ke sana • WASD untuk jalan • Seret untuk memutar • Cubit / scroll untuk zoom';
   return short?'Seret untuk memutar • Ketuk monumen':'Seret untuk memutar • Ketuk monumen proyek untuk detail • Cubit / scroll untuk zoom';
 }
 $('tab1').addEventListener('click',function(){switchWorld('w1');});
@@ -532,7 +544,7 @@ function tick(){
     if(walkTarget){
       const dx=walkTarget.x-avatar.group.position.x,dz=walkTarget.z-avatar.group.position.z;
       const dist=Math.hypot(dx,dz);
-      if(dist<0.08)walkTarget=null;
+      if(dist<0.08){walkTarget=null;if(pendingInfo){showInfo(pendingInfo);pendingInfo=null;}}
       else mv={x:dx/dist,z:dz/dist,step:Math.min(WALK_SPEED*dt,dist)};
     }else{
       const th=orbit1?orbit1.getTheta():0.5;
@@ -543,7 +555,7 @@ function tick(){
       if(KEYS['d']||KEYS['arrowright']){kx+=rx;kz+=rz;}
       if(KEYS['a']||KEYS['arrowleft']){kx-=rx;kz-=rz;}
       const kl=Math.hypot(kx,kz);
-      if(kl>0.01)mv={x:kx/kl,z:kz/kl,step:WALK_SPEED*dt};
+      if(kl>0.01){mv={x:kx/kl,z:kz/kl,step:WALK_SPEED*dt};pendingInfo=null;}
     }
     if(mv){
       const targetRot=Math.atan2(mv.x,mv.z);
@@ -583,6 +595,12 @@ function tick(){
       h.rotation.y=Math.sin(t*0.8+i)*0.15;
     });
     W1.trees.forEach(function(tr,i){tr.rotation.z=Math.sin(t*0.9+i*1.7)*0.02;});
+    if(orbit1&&W1.target){
+      const fk=Math.min(1,dt*3);
+      W1.target.x+=(avatar.group.position.x-W1.target.x)*fk;
+      W1.target.z+=(avatar.group.position.z-W1.target.z)*fk;
+      orbit1.apply();
+    }
     renderer1.render(scene1,camera1);
   }else{
     W2.rocket.position.y=0.2+Math.sin(t*1.8)*0.12;
@@ -602,7 +620,7 @@ resizeActive();
 showInfo('home');
 $('hint').textContent=hintFor('w1');
 tick();
-window.DUNIA={ready:true,switchWorld:switchWorld,showInfo:showInfo,_w1:{avatar:avatar,camera:camera1,walkTo:walkTo,walkState:function(){return {target:walkTarget,x:avatar.group.position.x,z:avatar.group.position.z};}},_w2:{camera:camera2}};
+window.DUNIA={ready:true,switchWorld:switchWorld,showInfo:showInfo,_w1:{avatar:avatar,camera:camera1,walkTo:walkTo,walkState:function(){return {target:walkTarget,x:avatar.group.position.x,z:avatar.group.position.z};},camTarget:function(){return {x:W1.target.x,z:W1.target.z};}},_w2:{camera:camera2}};
 </script>
 </body>
 </html>
