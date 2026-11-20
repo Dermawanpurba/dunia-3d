@@ -189,8 +189,8 @@ function addLights(scene){
   const sun=new THREE.DirectionalLight(0xfff2cc,0.95);
   sun.position.set(6,10,4);sun.castShadow=true;
   sun.shadow.mapSize.set(1024,1024);
-  sun.shadow.camera.left=-11;sun.shadow.camera.right=11;
-  sun.shadow.camera.top=11;sun.shadow.camera.bottom=-11;
+  sun.shadow.camera.left=-16;sun.shadow.camera.right=16;
+  sun.shadow.camera.top=16;sun.shadow.camera.bottom=-16;
   sun.shadow.camera.far=30;
   scene.add(sun);
 }
@@ -237,7 +237,7 @@ function buildAvatar(){
 }
 
 /* ---------- DUNIA 1: pulauku (branding / CV) ---------- */
-const W1={clickables:[],clouds:[],hotspots:[],trees:[]};
+const W1={clickables:[],clouds:[],hotspots:[],trees:[],obstacles:[]};
 let renderer1,scene1,camera1,avatar;
 function buildWorld1(){
   scene1=new THREE.Scene();
@@ -248,11 +248,11 @@ function buildWorld1(){
   const glow=glowSprite('rgba(255,214,120,0.9)');glow.position.set(-8,6.2,-13);glow.scale.set(7,7,1);scene1.add(glow);
   // pulau mengambang
   const island=new THREE.Group();
-  const islandTop=cyl(6,6,0.5,0x7ed491,0,-0.25,0);
+  const islandTop=cyl(12,12,0.5,0x7ed491,0,-0.25,0);
   island.add(islandTop);
   W1.islandTop=islandTop;
-  island.add(cyl(5.7,4.6,1.4,0xd9a066,0,-1.2,0));
-  const tip=cone(4.6,2.6,0xc98f5f,0,-3.2,0);tip.rotation.x=Math.PI;island.add(tip);
+  island.add(cyl(11.4,9,1.4,0xd9a066,0,-1.2,0));
+  const tip=cone(9,2.6,0xc98f5f,0,-3.2,0);tip.rotation.x=Math.PI;island.add(tip);
   scene1.add(island);
   // pepohonan
   function tree(x,z,s){
@@ -261,28 +261,70 @@ function buildWorld1(){
     t.add(ball(0.95,0x6ec98a,0,1.6,0));
     t.add(ball(0.65,0x8fd694,0.3,2.2,0.1));
     t.add(ball(0.55,0xa8e6b0,-0.35,2.05,-0.1));
-    scene1.add(t);W1.trees.push(t);return t;
+    scene1.add(t);W1.trees.push(t);W1.obstacles.push({x:x,z:z,r:1.0});return t;
   }
-  tree(-4.4,0.4,1);tree(4.4,-1.2,1.1);tree(-1.2,-4.3,0.85);
+  tree(-9.5,-2,1.1);tree(9.5,3.5,1.2);tree(-2.5,-9,1);tree(4,8.5,1.05);tree(-8,-7.5,0.95);
   // bunga-bunga
   const petals=[0xff9eb5,0xffc46b,0xc9b6f2,0xff8f6b,0x7fd1c0];
-  [[-1.8,2.6],[2.2,2.9],[-3.2,1.2],[4.4,0.6],[1.4,-2.8],[-4.6,-0.6],[0.6,3.4],[3.2,-3.2]].forEach(function(p,i){
+  [[-1.8,2.6],[2.2,2.9],[-3.2,1.2],[4.4,0.6],[1.4,-2.8],[-4.6,-0.6],[0.6,3.4],[3.2,-3.2],[-6.5,4.5],[6.8,-4.2],[-5,8.2],[8.6,1.5]].forEach(function(p,i){
     const f=new THREE.Group();f.position.set(p[0],0,p[1]);
     f.add(cyl(0.03,0.03,0.5,0x6ec98a,0,0.25,0));
     f.add(ball(0.18,petals[i%petals.length],0,0.55,0));
     scene1.add(f);
   });
   // pulau kecil
-  const islet=new THREE.Group();islet.position.set(5.4,-1.4,-3.6);
+  const islet=new THREE.Group();islet.position.set(15,-1.4,-9);
   islet.add(cyl(1.6,1.6,0.3,0x8fd694,0,0,0));
   const itip=cone(1.5,1.2,0xc98f5f,0,-0.75,0);itip.rotation.x=Math.PI;islet.add(itip);
   islet.add(cyl(0.09,0.12,0.7,0xb07a4a,0,0.5,0));
   islet.add(ball(0.55,0x6ec98a,0,1.05,0));
   scene1.add(islet);
+  // kolam
+  const pond=new THREE.Group();pond.position.set(7.5,0,0);
+  pond.add(cyl(2.5,2.5,0.06,0xe8d9a0,0,0.02,0));
+  pond.add(cyl(2.2,2.2,0.12,0x7fc8e8,0,0.06,0));
+  [[-1.6,1.2],[1.8,0.9],[-0.6,-1.9]].forEach(function(p){
+    pond.add(cone(0.12,0.9,0x6ec98a,p[0],0.5,p[1]));
+  });
+  scene1.add(pond);
+  W1.obstacles.push({x:7.5,z:0,r:2.6});
+  // tenda + api unggun (ala Pulau Komunitas)
+  const camp=new THREE.Group();camp.position.set(-8.5,0,0.5);
+  const tent=new THREE.Mesh(new THREE.ConeGeometry(1.3,1.5,4),mat(0xff8f6b));
+  tent.rotation.y=Math.PI/4;tent.position.set(0,0.75,0);tent.castShadow=true;camp.add(tent);
+  camp.add(box(0.5,0.6,0.05,0x3d4a6b,0,0.35,0.92));
+  const fire=new THREE.Group();fire.position.set(2.2,0,0.6);
+  for(let i=0;i<6;i++){
+    const a=i*Math.PI/3;
+    fire.add(ball(0.22,0x9aa5b1,Math.sin(a)*0.55,0.1,Math.cos(a)*0.55));
+  }
+  const log1=cyl(0.09,0.09,0.9,0xb07a4a,0,0.18,0);log1.rotation.z=Math.PI/2;log1.rotation.y=0.6;fire.add(log1);
+  const log2=cyl(0.09,0.09,0.9,0xb07a4a,0,0.18,0);log2.rotation.z=Math.PI/2;log2.rotation.y=-0.6;fire.add(log2);
+  const flame=cone(0.32,0.8,0xffc46b,0,0.6,0);fire.add(flame);
+  const fglow=glowSprite('rgba(255,180,80,0.85)');fglow.position.set(0,0.7,0);fglow.scale.set(3,3,1);fire.add(fglow);
+  camp.add(fire);
+  scene1.add(camp);
+  W1.flame=flame;W1.fglow=fglow;
+  W1.obstacles.push({x:-8.5,z:0.5,r:1.6});
+  W1.obstacles.push({x:-6.3,z:1.1,r:1.2});
+  // jalan batu dari tengah ke tiap hotspot
+  [[-7,6],[7,6],[-7,-6],[7,-6]].forEach(function(h){
+    for(let k=1;k<=3;k++){
+      const f=k/4;
+      scene1.add(cyl(0.55,0.55,0.08,0xead9b0,h[0]*f,0.04,h[1]*f));
+    }
+  });
+  // batu & semak
+  [[-5.5,3.5],[5,-7.5],[1.5,7],[9,-5.5]].forEach(function(p,i){
+    const r=ball(0.4+i*0.08,0x9aa5b1,p[0],0.2,p[1]);r.scale.set(1,0.7,1);scene1.add(r);
+  });
+  [[-3.5,-6.5],[6,3],[0,-8.5]].forEach(function(p){
+    const b=ball(0.6,0x6ec98a,p[0],0.35,p[1]);b.scale.set(1,0.7,1);scene1.add(b);
+  });
   // awan
   for(let i=0;i<4;i++){
     const cl=new THREE.Group();
-    const y=5.8+i*0.5,x=-10+i*6,z=-8-(i%2)*2;
+    const y=7+i*0.6,x=-16+i*10,z=-10-(i%2)*3;
     cl.add(ball(0.9,0xffffff,0,0,0));
     cl.add(ball(0.65,0xffffff,0.85,0.1,0.2));
     cl.add(ball(0.6,0xffffff,-0.85,0.05,-0.1));
@@ -310,18 +352,18 @@ function buildWorld1(){
   heart.add(ball(0.22,0xff8fa3,-0.18,0.12,0));
   heart.add(ball(0.22,0xff8fa3,0.18,0.12,0));
   const hc=cone(0.32,0.55,0xff8fa3,0,-0.28,0);hc.rotation.x=Math.PI;heart.add(hc);
-  hotspot('tentang',-3.2,2.8,heart,'Tentang');
+  hotspot('tentang',-7,6,heart,'Tentang');
   const capG=new THREE.Group();
   const board=box(0.95,0.08,0.95,0x3d4a6b,0,0.1,0);board.rotation.y=0.5;capG.add(board);
   capG.add(box(0.4,0.3,0.4,0x3d4a6b,0,-0.12,0));
   capG.add(cyl(0.03,0.03,0.4,0xffc46b,0.45,-0.05,0.2));
-  hotspot('pendidikan',3.2,2.8,capG,'Pendidikan');
+  hotspot('pendidikan',7,6,capG,'Pendidikan');
   const caseG=new THREE.Group();
   caseG.add(box(0.75,0.5,0.2,0xff8f6b,0,0,0));
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.035,8,16,Math.PI),mat(0x3d4a6b,0.6));
   handle.position.set(0,0.26,0);caseG.add(handle);
   caseG.add(box(0.2,0.12,0.02,0xffc46b,0,0.08,0.11));
-  hotspot('pekerjaan',-3.2,-2.9,caseG,'Pekerjaan');
+  hotspot('pekerjaan',-7,-6,caseG,'Pekerjaan');
   const botG=new THREE.Group();
   botG.add(box(0.55,0.5,0.4,0x5ec8b8,0,0,0));
   botG.add(ball(0.08,0xffffff,-0.13,0.08,0.21));
@@ -330,10 +372,10 @@ function buildWorld1(){
   botG.add(ball(0.04,0x2e3440,0.13,0.08,0.27));
   botG.add(cyl(0.03,0.03,0.3,0x3d4a6b,0,0.4,0));
   botG.add(ball(0.07,0xff8f6b,0,0.58,0));
-  hotspot('ai',3.2,-2.9,botG,'AI & Web');
+  hotspot('ai',7,-6,botG,'AI & Web');
   const target1=new THREE.Vector3(0,1.0,0);
   W1.target=target1;
-  orbit1=createOrbit($('c1'),camera1,target1,{theta:0.5,phi:1.12,radius:12.5,minR:8,maxR:24,onTap:function(e){
+  orbit1=createOrbit($('c1'),camera1,target1,{theta:0.5,phi:1.12,radius:17,minR:10,maxR:32,onTap:function(e){
     const hit=pick(e,$('c1'),camera1,W1.clickables);
     if(hit){
       if(hit.userData.key==='avatar'){wave();showInfo('avatar');}
@@ -466,7 +508,7 @@ function buildWorld2(){
 }
 
 /* ---------- avatar berjalan ---------- */
-const WALK_SPEED=2.2;
+const WALK_SPEED=2.6;
 let walkTarget=null,walkPhase=0,pendingInfo=null;
 const KEYS={};
 window.addEventListener('keydown',function(e){KEYS[e.key.toLowerCase()]=true;});
@@ -481,11 +523,16 @@ function groundPoint(e,canvas,camera){
 function walkTo(x,z,infoKey){
   let px=x,pz=z;
   const d=Math.hypot(px,pz);
-  if(d>5.2){px*=5.2/d;pz*=5.2/d;}
-  W1.trees.forEach(function(tr){
-    const dx=px-tr.position.x,dz=pz-tr.position.z,dd=Math.hypot(dx,dz);
-    if(dd<1.0&&dd>0.001){px=tr.position.x+dx/dd;pz=tr.position.z+dz/dd;}
+  if(d>11){px*=11/d;pz*=11/d;}
+  W1.obstacles.forEach(function(ob){
+    const dx=px-ob.x,dz=pz-ob.z,dd=Math.hypot(dx,dz);
+    if(dd<ob.r){
+      if(dd<=0.001){px=ob.x+ob.r;pz=ob.z;}
+      else{px=ob.x+dx/dd*ob.r;pz=ob.z+dz/dd*ob.r;}
+    }
   });
+  const d2=Math.hypot(px,pz);
+  if(d2>11){px*=11/d2;pz*=11/d2;}
   pendingInfo=null;
   if(waveT>=0){avatar.armR.rotation.z=0;avatar.head.rotation.z=0;waveT=-1;}
   walkTarget={x:px,z:pz};
@@ -500,7 +547,7 @@ function wave(){waveT=0;}
 function resizeActive(){
   const w=innerWidth,h=innerHeight;
   const boost=(w/h<0.75)?1.45:1;
-  if(active==='w1'&&renderer1){renderer1.setSize(w,h,false);camera1.aspect=w/h;camera1.updateProjectionMatrix();if(orbit1)orbit1.setRadius(12.5*boost);}
+  if(active==='w1'&&renderer1){renderer1.setSize(w,h,false);camera1.aspect=w/h;camera1.updateProjectionMatrix();if(orbit1)orbit1.setRadius(17*boost);}
   if(active==='w2'&&renderer2){renderer2.setSize(w,h,false);camera2.aspect=w/h;camera2.updateProjectionMatrix();if(orbit2)orbit2.setRadius(13*boost);}
 }
 function switchWorld(w){
@@ -588,13 +635,15 @@ function tick(){
     }
     W1.clouds.forEach(function(c){
       c.position.x+=c.userData.speed*dt;
-      if(c.position.x>13)c.position.x=-13;
+      if(c.position.x>20)c.position.x=-20;
     });
     W1.hotspots.forEach(function(h,i){
       h.position.y=h.userData.baseY+Math.sin(t*1.5+i*1.1)*0.12;
       h.rotation.y=Math.sin(t*0.8+i)*0.15;
     });
     W1.trees.forEach(function(tr,i){tr.rotation.z=Math.sin(t*0.9+i*1.7)*0.02;});
+    if(W1.flame){W1.flame.scale.y=1+Math.sin(t*9)*0.25+Math.sin(t*23)*0.1;W1.flame.rotation.y=t*2;}
+    if(W1.fglow){const fs=2.6+Math.sin(t*7)*0.4;W1.fglow.scale.set(fs,fs,1);}
     if(orbit1&&W1.target){
       const fk=Math.min(1,dt*3);
       W1.target.x+=(avatar.group.position.x-W1.target.x)*fk;
