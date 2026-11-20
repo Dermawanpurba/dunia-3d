@@ -810,12 +810,12 @@
     const WORLD_SIZE = 280;
     const PEAK_X = 0;
     const PEAK_Z = -10;
-    const PEAK_HEIGHT = 68;
+    const PEAK_HEIGHT = 95;
     const SOCKET_POS = new THREE.Vector3(0, PEAK_HEIGHT, -10);
 
     // Koordinat Jembatan Gantung Pos 1 (melintasi jurang timur)
-    const BRIDGE_START = new THREE.Vector3(49.1, 20.4, 16.8);
-    const BRIDGE_END = new THREE.Vector3(55.9, 20.4, -7.2);
+    const BRIDGE_START = new THREE.Vector3(49.1, 28.5, 16.8);
+    const BRIDGE_END = new THREE.Vector3(55.9, 28.5, -7.2);
     const BRIDGE_MID = new THREE.Vector3().addVectors(BRIDGE_START, BRIDGE_END).multiplyScalar(0.5);
     const BRIDGE_DIR = new THREE.Vector3().subVectors(BRIDGE_END, BRIDGE_START).normalize();
     const BRIDGE_LEN = BRIDGE_START.distanceTo(BRIDGE_END);
@@ -840,9 +840,12 @@
       stridePhase: 0,
       climbing: false
     };
+    let camDistBeforeTent = null; // jarak kamera sebelum masuk tenda (dikembalikan saat keluar)
 
     // Daftar Objek Interaktif & Simulasi
     const clickableSignMeshes = [];
+    const tents = [];
+    const npcs = [];
     const physicsBoulders = [];
     const physicsCrates = [];
     const particleSystems = [];
@@ -907,6 +910,13 @@
       // Sedikit perataan di area Basecamp selatan (z > 68) agar pondok/tenda/papan duduk rapi
       const baseFlat = smoothstep(66, 75, z) * (1.0 - smoothstep(32, 48, Math.abs(x)));
       h *= (1.0 - baseFlat);
+
+      // Perataan kecil di sekitar tenda tengah (46, -34) agar tenda duduk rata
+      const dMidTent = Math.hypot(x - 46, z + 34);
+      if (dMidTent < 6.0) {
+        const wMid = 1.0 - smoothstep(3.0, 6.0, dMidTent);
+        h = h * (1 - wMid) + 40.5 * wMid;
+      }
 
       // Cekungan/depresi vertex terrain tepat di bawah lubang soket bendera puncak
       // agar tidak ada bidang terrain datar yang menutupi interior lubang soket!
@@ -1257,7 +1267,7 @@
       ctx.fillStyle = '#facc15';
       ctx.font = '800 32px "Plus Jakarta Sans", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('2.850 MDPL', 256, 282);
+      ctx.fillText('3.800 MDPL', 256, 282);
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -1578,18 +1588,8 @@
       cabin.rotation.y = 0.32;
       grp.add(cabin);
 
-      // 2. Tenda Berkemah Roblox (Kanan Basecamp)
-      const tent = new THREE.Group();
-      const tentGeo = new THREE.ConeGeometry(3.4, 3.6, 4);
-      const tentMesh = new THREE.Mesh(tentGeo, new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.75 }));
-      tentMesh.position.y = 1.8;
-      tentMesh.rotation.y = Math.PI * 0.25;
-      tentMesh.castShadow = true;
-      tentMesh.receiveShadow = true;
-      tent.add(tentMesh);
-      const tentX = 15.5, tentZ = 85.0;
-      tent.position.set(tentX, getTerrainHeight(tentX, tentZ), tentZ);
-      grp.add(tent);
+      // 2. Tenda Berkemah Roblox (Kanan Basecamp) — bisa dimasuki, ada sleeping bag & lentera
+      createTent({ x: 15.5, z: 85.0, faceX: 9.5, faceZ: 82.5, color: 0x0284c7, name: 'Tenda Basecamp' });
 
       // 3. Api Unggun + Partikel Bara Naik
       const fireX = 9.5, fireZ = 82.5;
@@ -1697,6 +1697,236 @@
       });
 
       scene.add(grp);
+    }
+
+    /* =========================================================================
+       TENDA YANG BISA DIMASUKI + NPC PEMANDU (Raka, Sinta, Bimo, Dewi)
+       ========================================================================= */
+    function createNameSprite(text) {
+      const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+      const g = c.getContext('2d');
+      g.fillStyle = 'rgba(255,255,255,0.95)';
+      g.beginPath();
+      g.moveTo(52, 14); g.lineTo(460, 14); g.arcTo(506, 14, 506, 60, 46);
+      g.lineTo(506, 60); g.arcTo(506, 114, 460, 114, 46);
+      g.lineTo(52, 114); g.arcTo(6, 114, 6, 60, 46);
+      g.lineTo(6, 60); g.arcTo(6, 14, 52, 14, 46);
+      g.closePath(); g.fill();
+      g.fillStyle = '#0f172a'; g.font = '800 46px "Plus Jakarta Sans", system-ui, sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 256, 66);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+      sp.scale.set(3.2, 0.8, 1);
+      return sp;
+    }
+
+    /**
+     * Tenda A-frame: pintu depan terbuka (masuk lewat situ), dinding menahan,
+     * di dalam ada sleeping bag + lentera hangat. Panel jadi tembus pandang
+     * saat pemain di dalam/didekatnya agar kamera bisa melihat ke dalam.
+     * cfg: {x, z, faceX, faceZ (arah pintu), color, name}
+     */
+    function createTent(cfg) {
+      const grp = new THREE.Group();
+      const baseY = getTerrainHeight(cfg.x, cfg.z);
+      const tentMat = new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.75, side: THREE.DoubleSide, transparent: true });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, side: THREE.DoubleSide, transparent: true });
+      const fadeMats = [tentMat, darkMat];
+      const ridgeH = 2.7, halfW = 2.2, panelLen = 3.5;
+      const tilt = Math.atan2(halfW, ridgeH);
+      // Dua panel miring (atap A-frame)
+      [-1, 1].forEach(side => {
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.14, panelLen, 5.0), tentMat);
+        panel.position.set(side * halfW / 2, ridgeH / 2, 0);
+        panel.rotation.z = side * tilt;
+        panel.castShadow = true; panel.receiveShadow = true;
+        grp.add(panel);
+      });
+      // Panel segitiga belakang
+      const triShape = new THREE.Shape();
+      triShape.moveTo(-halfW, 0); triShape.lineTo(halfW, 0); triShape.lineTo(0, ridgeH); triShape.closePath();
+      const backPanel = new THREE.Mesh(new THREE.ShapeGeometry(triShape), darkMat);
+      backPanel.position.set(0, 0, -2.5);
+      backPanel.castShadow = true;
+      grp.add(backPanel);
+      // Dua lipatan pintu depan (terbuka ke samping)
+      [-1, 1].forEach(side => {
+        const flap = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.0, 1.1), tentMat);
+        flap.position.set(side * 1.9, 1.0, 2.45);
+        flap.rotation.y = -side * 0.55;
+        flap.castShadow = true;
+        grp.add(flap);
+      });
+      // Alas + sleeping bag + bantal
+      const mat = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.08, 4.6), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 }));
+      mat.position.y = 0.04;
+      mat.receiveShadow = true;
+      grp.add(mat);
+      const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.5, 4, 10), new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.7 }));
+      bag.rotation.x = Math.PI / 2;
+      bag.position.set(0.7, 0.32, -0.3);
+      bag.castShadow = true;
+      grp.add(bag);
+      const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.45), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 }));
+      pillow.position.set(0.7, 0.22, -1.45);
+      grp.add(pillow);
+      // Lentera hangat di dalam tenda
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 1.6 }));
+      lamp.position.set(0, 2.2, 0.5);
+      grp.add(lamp);
+      const lampLight = new THREE.PointLight(0xffb020, 2.5, 9, 1.5);
+      lampLight.position.set(0, 2.0, 0.5);
+      grp.add(lampLight);
+      // Tiang + bendera kecil di puncak tenda
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 8), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
+      pole.position.set(0, ridgeH + 0.5, 0);
+      grp.add(pole);
+      const flagShape = new THREE.Shape();
+      flagShape.moveTo(0, 0); flagShape.lineTo(0.85, -0.22); flagShape.lineTo(0, -0.48); flagShape.closePath();
+      const flag = new THREE.Mesh(new THREE.ShapeGeometry(flagShape), new THREE.MeshStandardMaterial({ color: 0xfacc15, side: THREE.DoubleSide }));
+      flag.position.set(0.06, ridgeH + 1.0, 0);
+      grp.add(flag);
+
+      const entranceYaw = Math.atan2(cfg.faceX - cfg.x, cfg.faceZ - cfg.z);
+      grp.position.set(cfg.x, baseY, cfg.z);
+      grp.rotation.y = entranceYaw;
+      scene.add(grp);
+      const tent = { name: cfg.name, x: cfg.x, z: cfg.z, y: baseY, entranceYaw, radius: 3.1, group: grp, mats: fadeMats, inside: false };
+      tents.push(tent);
+      return tent;
+    }
+
+    /**
+     * NPC Roblox sederhana: melambai berkala, menghadap pemain saat dekat,
+     * menyapa lewat toast saat pemain mendekat (mode WASD).
+     * cfg: {x, z, name, torso, cap, legs?, line, rotY?}
+     */
+    function createNPC(cfg) {
+      const grp = new THREE.Group();
+      const baseY = getTerrainHeight(cfg.x, cfg.z);
+      const skin = 0xf5cd30, legC = cfg.legs || 0xa4bd47;
+      [-0.24, 0.24].forEach(lx => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.75, 0.42), new THREE.MeshStandardMaterial({ color: legC, roughness: 0.6 }));
+        leg.position.set(lx, 0.375, 0);
+        leg.castShadow = true;
+        grp.add(leg);
+      });
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.15, 0.62), new THREE.MeshStandardMaterial({ color: cfg.torso, roughness: 0.55 }));
+      torso.position.y = 1.32;
+      torso.castShadow = true;
+      grp.add(torso);
+      const armMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.5 });
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.36, 1.05, 0.36), armMat);
+      armL.position.set(-0.76, 1.32, 0);
+      armL.castShadow = true;
+      grp.add(armL);
+      const armR = new THREE.Group();
+      armR.position.set(0.76, 1.85, 0);
+      const armRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.36, 1.05, 0.36), armMat);
+      armRMesh.position.y = -0.52;
+      armRMesh.castShadow = true;
+      armR.add(armRMesh);
+      grp.add(armR);
+      const headMatSide = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.45 });
+      const headMatFace = new THREE.MeshStandardMaterial({ map: createRobloxFaceTexture('pro'), roughness: 0.42 });
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), [headMatSide, headMatSide, headMatSide, headMatSide, headMatFace, headMatSide]);
+      head.position.y = 2.3;
+      head.castShadow = true;
+      grp.add(head);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 0.9), new THREE.MeshStandardMaterial({ color: cfg.cap || 0x0d69ac, roughness: 0.6 }));
+      cap.position.y = 2.78;
+      grp.add(cap);
+      const sp = createNameSprite(cfg.name);
+      sp.position.set(0, 3.5, 0);
+      grp.add(sp);
+      grp.position.set(cfg.x, baseY, cfg.z);
+      grp.rotation.y = cfg.rotY || 0;
+      scene.add(grp);
+      const npc = { name: cfg.name, line: cfg.line, group: grp, armR, baseY, phase: Math.random() * 10, cooldown: 0 };
+      npcs.push(npc);
+      return npc;
+    }
+
+    // Tenda kedua di pertengahan jalur + 4 NPC pemandu
+    function buildTentsAndNPCs() {
+      createTent({ x: 46, z: -34, faceX: 40.5, faceZ: -31, color: 0xea580c, name: 'Tenda Tengah' });
+      createNPC({ x: -6, z: 78, name: 'Raka', torso: 0x0d69ac, cap: 0x16a34a, line: 'Halo! Saya Raka, pemandu basecamp. Ikuti jalur biru ke puncak, dan baca tiap papan ya!' });
+      createNPC({ x: 7, z: 79, name: 'Sinta', torso: 0xec4899, cap: 0xf59e0b, line: 'Api unggun ini hangat. Duduk dulu, istirahat sebelum mendaki!' });
+      createNPC({ x: 42.5, z: -31.5, name: 'Bimo', torso: 0xea580c, cap: 0x0d69ac, line: 'Tenda ini tempat istirahat di tengah jalan. Masuk saja, di dalam ada sleeping bag dan lentera.' });
+      createNPC({ x: -4, z: -13, name: 'Dewi', torso: 0x22c55e, cap: 0xef4444, line: 'Selamat! Kamu sampai di puncak Gunung Dermawan, 3.800 MDPL!' });
+    }
+
+    // Tabrakan dinding tenda: masuk/keluar hanya lewat celah pintu.
+    function applyTentCollision(prevX, prevZ) {
+      for (const t of tents) {
+        const topY = t.y + 2.9;
+        if (playerPhysics.pos.y > topY) continue; // sedang melompat di atas tenda
+        const dx = playerPhysics.pos.x - t.x, dz = playerPhysics.pos.z - t.z;
+        const dist = Math.hypot(dx, dz);
+        const prevDx = prevX - t.x, prevDz = prevZ - t.z;
+        const prevDist = Math.hypot(prevDx, prevDz);
+        const ang = Math.atan2(dx, dz);
+        let diff = ang - t.entranceYaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (Math.abs(diff) <= 1.0) continue; // celah pintu: bebas masuk/keluar
+        const M = 0.05; // margin anti galat floating-point di batas dinding
+        if (prevDist >= t.radius && dist < t.radius) {
+          // Masuk lewat dinding -> dorong keluar (sedikit di luar dinding)
+          const k = (t.radius + M) / Math.max(dist, 0.001);
+          playerPhysics.pos.x = t.x + dx * k;
+          playerPhysics.pos.z = t.z + dz * k;
+          window.__tentHits = (window.__tentHits || 0) + 1;
+        } else if (prevDist < t.radius && dist >= t.radius) {
+          // Keluar lewat dinding -> tahan di dalam (sedikit di dalam dinding)
+          const k = (t.radius - M) / Math.max(dist, 0.001);
+          playerPhysics.pos.x = t.x + dx * k;
+          playerPhysics.pos.z = t.z + dz * k;
+        } else if (dist < t.radius && dist > t.radius - M) {
+          // Menekan dinding dari dalam -> geser di dalam
+          const k = (t.radius - M) / Math.max(dist, 0.001);
+          playerPhysics.pos.x = t.x + dx * k;
+          playerPhysics.pos.z = t.z + dz * k;
+        }
+      }
+    }
+
+    // Per-frame: tenda tembus pandang saat pemain di dalam + toast masuk,
+    // NPC melambai, menghadap pemain, dan menyapa (mode WASD).
+    function updateTentsAndNPCs(dt) {
+      const px = climber.root.position.x, py = climber.root.position.y, pz = climber.root.position.z;
+      for (const t of tents) {
+        const dist = Math.hypot(px - t.x, pz - t.z);
+        const inside = dist < t.radius && py < t.y + 2.9;
+        if (inside && !t.inside) {
+          showToast('⛺ Kamu masuk ke ' + t.name + ' — istirahat dulu!');
+        }
+        t.inside = inside;
+        const targetOp = (dist < t.radius + 1.5) ? 0.22 : 1.0;
+        for (const m of t.mats) {
+          m.opacity += (targetOp - m.opacity) * Math.min(1, dt * 6);
+        }
+      }
+      for (const n of npcs) {
+        const dx = px - n.group.position.x, dz = pz - n.group.position.z;
+        const dist = Math.hypot(dx, dz);
+        const cycle = (totalTime + n.phase) % 8;
+        const targetArm = cycle < 2.5 ? (2.1 + Math.sin(totalTime * 5) * 0.35) : 0;
+        n.armR.rotation.z += (targetArm - n.armR.rotation.z) * Math.min(1, dt * 8);
+        n.group.position.y = n.baseY + Math.sin(totalTime * 2 + n.phase) * 0.05;
+        if (dist < 9) {
+          const targetYaw = Math.atan2(dx, dz);
+          let d = targetYaw - n.group.rotation.y;
+          while (d > Math.PI) d -= Math.PI * 2;
+          while (d < -Math.PI) d += Math.PI * 2;
+          n.group.rotation.y += d * Math.min(1, dt * 5);
+        }
+        if (n.cooldown > 0) n.cooldown -= dt;
+        if (THEME_CONFIG.playMode && dist < 4.5 && n.cooldown <= 0) {
+          showToast(n.line);
+          n.cooldown = 20;
+        }
+      }
     }
 
     /**
@@ -1829,10 +2059,10 @@
     }
 
     /**
-     * Puncak Gunung Dermawan (68m / 2.850 MDPL):
+     * Puncak Gunung Dermawan (95m / 3.800 MDPL):
      * - Lubang Soket Tancap Bendera yang BENAR-BENAR CEKUNG KE DALAM (Recessed Cutout Socket)
      *   memakai RingGeometry + dinding silinder cekung tanpa terrain datar di atasnya!
-     * - Tugu Puncak 2.850 MDPL
+     * - Tugu Puncak 3.800 MDPL
      * - Bendera Puncak dengan animasi gelombang angin (vertex wave)
      */
     function buildSummitAndRecessedSocket() {
@@ -2120,7 +2350,7 @@
         subtitle: 'Pos 8 • Proyek • Tebing Curam',
         badge: 'PROYEK',
         color: '#ef4444',
-        elevation: '1.950 MDPL',
+        elevation: '2.540 MDPL',
         lines: [
           'Dashboard tim AI agent saya',
           'Anca, Tono, Dani, Cipu, Jaka, Mu',
@@ -2140,7 +2370,7 @@
         subtitle: 'Pos 5 • Proyek • Jembatan Gantung',
         badge: 'PROYEK',
         color: '#38bdf8',
-        elevation: '1.200 MDPL',
+        elevation: '1.500 MDPL',
         lines: [
           'Web app realtime untuk tambang',
           'Nikel & batubara: dashboard, LMS',
@@ -2157,10 +2387,10 @@
         z: -14.8,
         rotY: -0.45,
         title: 'HALO, SAYA DERMAWAN',
-        subtitle: 'Puncak • Dunia Dermawan • 2.850 MDPL',
+        subtitle: 'Puncak • Dunia Dermawan • 3.800 MDPL',
         badge: 'PUNCAK',
         color: '#22c55e',
-        elevation: '2.850 MDPL',
+        elevation: '3.800 MDPL',
         lines: [
           'SPV Maintenance Planner & AI enthusiast',
           'Satu gunung untuk semuanya',
@@ -2186,7 +2416,7 @@
           x: 22.0, z: 62.0, arrowYaw: 2.45,
           text: '3. PEKERJAAN ←',
           bg: '#e0f2fe',
-          elevation: '680 MDPL',
+          elevation: '770 MDPL',
           infoLines: [
             'SPV Maintenance Planner',
             'Alat & plant tambang siap kerja',
@@ -2197,7 +2427,7 @@
         {
           x: 41.5, z: 34.5, arrowYaw: -0.85,
           text: '4. AI & WEB →',
-          elevation: '1.150 MDPL',
+          elevation: '1.430 MDPL',
           infoLines: [
             'AI Untuk Semua: web app realtime tambang',
             'Visualisasi data & game',
@@ -2208,7 +2438,7 @@
         {
           x: 48.0, z: -20.0, arrowYaw: 0.72,
           text: '6. MINECHART.STUDIO →',
-          elevation: '1.620 MDPL',
+          elevation: '2.080 MDPL',
           infoLines: [
             'Visualisasi data 13 departemen tambang',
             '134 grafik, 28 jenis',
@@ -2222,7 +2452,7 @@
           x: 34.5, z: -34.5, arrowYaw: 0.55,
           text: '7. PULAU KOMUNITAS ↑',
           bg: '#fecaca', fg: '#991b1b',
-          elevation: '1.880 MDPL',
+          elevation: '2.450 MDPL',
           infoLines: [
             'Game survival pulau 3D di browser',
             'Mancing, berkebun, masak',
@@ -2236,7 +2466,7 @@
           x: 0.0, z: -22.0, arrowYaw: 1.95,
           text: '9. SHEET-MANAGER ↗',
           bg: '#dcfce7', fg: '#14532d',
-          elevation: '2.520 MDPL',
+          elevation: '3.340 MDPL',
           infoLines: [
             'Backup SQLite ERP jadi grid Sheets',
             'Edit & simpan kembali ke SQLite',
@@ -2249,7 +2479,7 @@
         {
           x: -10.5, z: -28.0, arrowYaw: 1.9,
           text: '10. OPEN-IDM ↗',
-          elevation: '2.700 MDPL',
+          elevation: '3.590 MDPL',
           infoLines: [
             'Alternatif IDM yang open source',
             'Unduh lebih cepat, gratis',
@@ -3354,7 +3584,7 @@
         if (plantProgress > 0.88 && !fireworksTriggered) {
           fireworksTriggered = true;
           spawnFireworksCelebration();
-          showToast('🏆 Puncak Gunung Dermawan 2.850 MDPL Tercapai!');
+          showToast('🏆 Puncak Gunung Dermawan 3.800 MDPL Tercapai!');
         }
       }
 
@@ -3408,7 +3638,7 @@
       playerPhysics.yaw = climber.root.rotation.y;
 
       // Update Telemetri HUD
-      const mdpl = Math.round(450 + (Math.max(0, pt.y) / PEAK_HEIGHT) * (2850 - 450));
+      const mdpl = Math.round(450 + (Math.max(0, pt.y) / PEAK_HEIGHT) * (3800 - 450));
       document.getElementById('tele-alt').textContent = mdpl.toLocaleString('id-ID') + ' MDPL';
       document.getElementById('tele-phase').textContent = (THEME_CONFIG.autoScroll && tourStops.length)
         ? ('Tur ' + tourIndex + '/' + tourStops.length + ' • ' + phaseLabel)
@@ -3545,9 +3775,11 @@
       playerPhysics.vel.y -= 26.5 * dt;
 
       // Integrasi posisi + batas map 280x280
+      const prevPX = playerPhysics.pos.x, prevPZ = playerPhysics.pos.z;
       playerPhysics.pos.addScaledVector(playerPhysics.vel, dt);
       playerPhysics.pos.x = THREE.MathUtils.clamp(playerPhysics.pos.x, -132, 132);
       playerPhysics.pos.z = THREE.MathUtils.clamp(playerPhysics.pos.z, -132, 132);
+      applyTentCollision(prevPX, prevPZ);
 
       const surf = getWalkableSurface(playerPhysics.pos.x, playerPhysics.pos.z, totalTime);
       if (playerPhysics.pos.y <= surf.y) {
@@ -3589,11 +3821,11 @@
       }
 
       // Telemetri HUD
-      const mdpl = Math.round(450 + (Math.max(0, playerPhysics.pos.y) / PEAK_HEIGHT) * (2850 - 450));
+      const mdpl = Math.round(450 + (Math.max(0, playerPhysics.pos.y) / PEAK_HEIGHT) * (3800 - 450));
       document.getElementById('tele-alt').textContent = mdpl.toLocaleString('id-ID') + ' MDPL';
       document.getElementById('tele-phase').textContent = surf.onBridge
         ? 'Mode WASD: Jembatan Gantung'
-        : (mdpl > 2700 ? 'Mode WASD: Puncak Gunung Dermawan!' : 'Mode Eksplorasi WASD');
+        : (mdpl > 3600 ? 'Mode WASD: Puncak Gunung Dermawan!' : 'Mode Eksplorasi WASD');
 
       // Kamera mengikuti karakter + bisa diputar bebas via OrbitControls
       controls.enabled = true;
@@ -3604,6 +3836,31 @@
 
       const camFloor = getTerrainHeight(camera.position.x, camera.position.z) + 1.8;
       if (camera.position.y < camFloor) camera.position.y = camFloor;
+
+      // Saat di dalam tenda, dekatkan kamera agar tidak terhalang lereng/pohon;
+      // kembali ke jarak semula saat keluar tenda.
+      const inTentNow = tents.some(t => {
+        const d = Math.hypot(playerPhysics.pos.x - t.x, playerPhysics.pos.z - t.z);
+        return d < t.radius && playerPhysics.pos.y < t.y + 2.9;
+      });
+      const camOff = new THREE.Vector3().subVectors(camera.position, controls.target);
+      const camLen = camOff.length();
+      if (inTentNow) {
+        if (camDistBeforeTent === null) camDistBeforeTent = camLen;
+        if (camLen > 7) {
+          const nl = THREE.MathUtils.lerp(camLen, 7, Math.min(1, dt * 3));
+          camOff.multiplyScalar(nl / camLen);
+          camera.position.copy(controls.target).add(camOff);
+        }
+      } else if (camDistBeforeTent !== null) {
+        if (camLen < camDistBeforeTent - 0.1) {
+          const nl = THREE.MathUtils.lerp(camLen, camDistBeforeTent, Math.min(1, dt * 3));
+          camOff.multiplyScalar(nl / camLen);
+          camera.position.copy(controls.target).add(camOff);
+        } else {
+          camDistBeforeTent = null;
+        }
+      }
       controls.update();
     }
 
@@ -3849,6 +4106,7 @@
       buildTerrainAndBaseplate();
       buildDistantHorizonAndClouds();
       buildBasecamp();
+      buildTentsAndNPCs();
       buildPos1SuspensionBridge();
       buildPos2ClimbingWall();
       buildSummitAndRecessedSocket();
@@ -3877,6 +4135,7 @@
       } else {
         updateScrollytellingMode(dt);
       }
+      updateTentsAndNPCs(dt);
 
       renderer.render(scene, camera);
     }
@@ -3911,7 +4170,12 @@
           tourStops: () => tourStops.map(st => ({ p: Math.round(st.p * 1000) / 1000, num: st.num, title: st.data.title })),
           tourState: () => ({ index: tourIndex, paused: tourPauseUntil > 0, rockslide: tourRockslideDone, progress: Math.round(smoothProgress * 1000) / 1000 }),
           boulders: () => physicsBoulders.length,
-          setPauseMs: (ms) => { tourPauseMs = ms; }
+          setPauseMs: (ms) => { tourPauseMs = ms; },
+          npcs: () => npcs.map(n => ({ name: n.name, x: Math.round(n.group.position.x * 10) / 10, z: Math.round(n.group.position.z * 10) / 10 })),
+          tents: () => tents.map(t => ({ name: t.name, x: t.x, z: t.z, inside: t.inside, yaw: Math.round(t.entranceYaw * 100) / 100, r: t.radius })),
+          tentHits: () => (window.__tentHits || 0),
+          teleport: (x, z) => { const s = getWalkableSurface(x, z); playerPhysics.pos.set(x, s.y, z); playerPhysics.vel.set(0, 0, 0); return true; },
+          enterTent: (name) => { const t = tents.find(tt => tt.name === name); if (!t) return false; playerPhysics.pos.set(t.x + Math.sin(t.entranceYaw) * 1.2, t.y, t.z + Math.cos(t.entranceYaw) * 1.2); playerPhysics.vel.set(0, 0, 0); return true; }
         };
       } catch (err) {
         console.error('Gagal menginisialisasi Gunung Dermawan 3D:', err);
