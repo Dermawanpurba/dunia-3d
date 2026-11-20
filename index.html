@@ -1504,11 +1504,13 @@
           mesh.position.set((b - 1) * 6.5, (b % 2) * 1.6, ((b % 3) - 1) * 3.2);
           cloud.add(mesh);
         }
-        cloud.position.set(
-          (Math.random() - 0.5) * 340,
-          86 + Math.random() * 32,
-          (Math.random() - 0.5) * 340
-        );
+        // Awan jauh di atas puncak (95m) dan menjauh dari badan gunung — tidak lagi menempel
+        let cx, cz;
+        do {
+          cx = (Math.random() - 0.5) * 340;
+          cz = (Math.random() - 0.5) * 340;
+        } while (Math.hypot(cx, cz + 10) < 70); // jarak horizontal minimum 70 dari puncak (0,-10)
+        cloud.position.set(cx, 128 + Math.random() * 36, cz);
         cloud.userData.speed = 0.8 + Math.random() * 1.4;
         scene.add(cloud);
         clouds.push(cloud);
