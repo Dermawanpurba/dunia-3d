@@ -1,800 +1,3828 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Dermawan — Dunia 3D</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;font-family:'Baloo 2',system-ui,-apple-system,'Segoe UI',sans-serif;color:#3d4a6b;overflow:hidden;
-  background:linear-gradient(180deg,#3f9be0 0%,#8ecdf7 45%,#fdf3df 100%);transition:background .6s}
-canvas{display:block;touch-action:none}
-.world{position:fixed;inset:0;display:none}
-.world.active{display:block}
-header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:10px;padding:12px 16px;flex-wrap:wrap}
-.brand{background:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:18px;box-shadow:0 6px 20px rgba(61,74,107,.15)}
-.brand b{color:#ff8f6b}
-.tabs{display:flex;gap:6px;background:rgba(255,255,255,.75);border-radius:999px;padding:5px;box-shadow:0 6px 20px rgba(61,74,107,.12)}
-.tab{border:0;background:transparent;font:inherit;font-weight:700;color:#3d4a6b;padding:8px 18px;border-radius:999px;cursor:pointer}
-.tab.active{background:#ff8f6b;color:#fff}
-.tab.two.active{background:#8b7cf6}
-.links{margin-left:auto;display:flex;gap:8px}
-.linkpill{background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;text-decoration:none;color:#3d4a6b;box-shadow:0 6px 20px rgba(61,74,107,.12);font-size:14px}
-.hint{position:fixed;top:78px;left:50%;transform:translateX(-50%);z-index:9;background:rgba(255,255,255,.85);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(61,74,107,.1);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
-#panel{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:10;width:min(640px,calc(100% - 24px));background:rgba(255,255,255,.94);border-radius:24px;box-shadow:0 12px 32px rgba(61,74,107,.18);padding:16px 20px}
-#panel h2{margin:0 0 4px;font-size:20px;line-height:1.25}
-#panel p{margin:0;font-size:15px;line-height:1.55}
-#panel .go{display:inline-block;margin-top:10px;background:#5ec8b8;color:#fff;font-weight:800;text-decoration:none;padding:9px 18px;border-radius:999px}
-#panel .go.hide{display:none}
-#panel.hide{display:none}
-.pclose{position:absolute;top:10px;right:12px;border:0;background:#eef2f7;color:#3d4a6b;border-radius:50%;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer;font-family:inherit}
-.dpad{position:fixed;left:14px;bottom:16px;z-index:20;display:none;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px;touch-action:none}
-.dpad button{border:1px solid rgba(61,74,107,.3);background:rgba(255,255,255,.88);color:#3d4a6b;border-radius:16px;font-size:20px;font-family:inherit;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent}
-.dpad button:active{background:#ffe9b0}
-.dpad button[data-d="up"]{grid-column:2;grid-row:1}
-.dpad button[data-d="left"]{grid-column:1;grid-row:2}
-.dpad button[data-d="right"]{grid-column:3;grid-row:2}
-.dpad button[data-d="down"]{grid-column:2;grid-row:3}
-.dpad button[data-d="jump"]{grid-column:2;grid-row:2}
-.toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(61,74,107,.93);color:#fff;padding:10px 18px;border-radius:999px;font-size:15px;font-weight:600;white-space:nowrap}
-#toast.hide{display:none}
-@media(max-width:640px){
-  .links{display:none}
-  .brand{font-size:16px}
-  .hint{top:112px;font-size:12px}
-  #panel h2{font-size:18px}
-  #panel p{font-size:14px}
-}
-</style>
-</head>
-<body>
-<header>
-  <div class="brand">Dermawan <b>• Dunia 3D</b></div>
-  <div class="links">
-    <a class="linkpill" href="https://github.com/Dermawanpurba" target="_blank" rel="noopener">GitHub</a>
-    <a class="linkpill" href="https://www.aiuntuksemua.my.id" target="_blank" rel="noopener">AI Untuk Semua</a>
-  </div>
-</header>
-<div class="hint" id="hint">Ketuk tangga / pos &mdash; karakter mendaki ke sana</div>
-<div class="dpad" id="dpad">
-  <button data-d="up" aria-label="Naik">&#9650;</button>
-  <button data-d="left" aria-label="Kiri">&#9664;</button>
-  <button data-d="right" aria-label="Kanan">&#9654;</button>
-  <button data-d="down" aria-label="Turun">&#9660;</button>
-  <button data-d="jump" aria-label="Lompat">&#10548;</button>
-</div>
-<div class="toast hide" id="toast"></div>
-<div class="world active" id="world1"><canvas id="c1"></canvas></div>
-<section id="panel" class="hide">
-  <button id="pClose" class="pclose" aria-label="Tutup">×</button>
-  <h2 id="pTitle">Halo, saya Dermawan</h2>
-  <p id="pText">SPV Maintenance Planner di Kalimantan Utara &amp; AI enthusiast. Dunia ini rumah digital saya — kenalan dulu, lalu lihat proyek-proyek yang saya bangun.</p>
-  <a id="pLink" class="go hide" href="#" target="_blank" rel="noopener">Buka</a>
-</section>
-<script src="vendor/three.min.js"></script>
-<script>
-const $=id=>document.getElementById(id);
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dermawan • Dunia 3D — Pendakian Gunung Roblox</title>
 
-/* ---------- data info (semua data nyata) ---------- */
-const INFO={
-  home:{title:'Halo, saya Dermawan',text:'SPV Maintenance Planner di Kalimantan Utara & AI enthusiast. Satu gunung untuk semuanya — dari base camp sampai puncak, tiap pos bercerita tentang saya dan proyek yang saya bangun.'},
-  avatar:{title:'Halo! Saya Dermawan',text:'Senang bertemu di dunia saya! Sehari-hari saya merencanakan perawatan alat berat dan plant tambang — dan di luar itu saya membangun web app dengan bantuan AI agent.'},
-  tentang:{title:'Tentang saya',text:'Saya Dermawan Purba. Sehari-hari merencanakan perawatan alat berat dan plant tambang. Di luar itu saya membangun web app dengan AI agent — dari nol sampai live.'},
-  pendidikan:{title:'Pendidikan',text:'S1 Teknik Industri, Universitas Mulawarman. Sekarang semester 4 S2 Magister Manajemen di Universitas Ciputra Surabaya (kuliah online). Belajar terus, sambil kerja.'},
-  pekerjaan:{title:'Pekerjaan',text:'SPV Maintenance Planner — memastikan alat dan plant tambang siap kerja: jadwal perawatan, suku cadang, dan tim lapangan.'},
-  ai:{title:'AI & Web App',text:'Saya membangun AI Untuk Semua: web app realtime untuk operasional tambang, plus alat visualisasi data dan game. Semua dibuat dengan bantuan AI agent.'},
-  projects:{title:'Proyek yang saya bangun',text:'Enam proyek nyata — web app, visualisasi data, game, sampai tools open source. Ketuk salah satu bangunan untuk melihat detail dan tautannya.'},
-  aiuntuksemua:{title:'AI Untuk Semua',text:'Web app realtime & scalable untuk operasional tambang nikel dan batubara: dashboard, LMS, dan dokumen pengiriman. Dibangun dengan Hono + SQLite + React.',url:'https://www.aiuntuksemua.my.id',label:'Buka aiuntuksemua.my.id'},
-  minechart:{title:'MineChart.studio',text:'Pustaka visualisasi data untuk 13 departemen pertambangan — 134 grafik, 28 jenis. Tiap peran bisa lihat grafik yang ia butuhkan.',url:'https://dermawanpurba.github.io/MineChart.studio/',label:'Buka MineChart.studio'},
-  pulau:{title:'Pulau Komunitas 3D',text:'Game survival pulau 3D di browser: mancing, berkebun, masak, dan multiplayer dengan room code. NPC Budi, Siti, dan Rama menemani di pulau.',url:'https://dermawanpurba.github.io/Game-komunitas/',label:'Main gamenya'},
-  mission:{title:'Mission Control',text:'Dashboard tim AI agent saya: Anca (PM), Tono (riset), Dani (coding), Cipu (video), Jaka (QC), Mu (UI/UX). Semua tugas dan obrolan tim tercatat di sini.',url:'https://www.myjarvis.my.id',label:'Buka Mission Control'},
-  sheet:{title:'Sheet-manager',text:'Buka backup SQLite ERP sebagai grid ala Google Sheets: bisa edit, simpan kembali ke SQLite, dan ekspor JSON + dump MySQL. Dibangun dengan PHP.',url:'https://github.com/Dermawanpurba/Sheet-manager',label:'Lihat di GitHub'},
-  openidm:{title:'open-idm',text:'Alternatif Internet Download Manager yang open source. Unduh file lebih cepat, gratis, dan kodenya terbuka untuk siapa saja.',url:'https://github.com/Dermawanpurba/open-idm',label:'Lihat di GitHub'}
-};
-function showInfo(key,zoomIn){
-  const d=INFO[key]; if(!d) return;
-  $('pTitle').textContent=d.title;
-  $('pText').textContent=d.text;
-  const a=$('pLink');
-  if(d.url){a.href=d.url;a.textContent=d.label||'Buka';a.classList.remove('hide');}
-  else a.classList.add('hide');
-  $('panel').classList.remove('hide');
-  if(zoomIn&&orbit1)orbit1.setRadius(13);
-  updateDpad();
-}
-function hidePanel(){
-  $('panel').classList.add('hide');
-  if(orbit1){const b=(innerWidth/innerHeight<0.75)?0.9:1;orbit1.setRadius(24*b);}
-  updateDpad();
-}
-$('pClose').addEventListener('click', hidePanel);
+  <!-- Font modern untuk UI minimal & papan informasi -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
 
-/* ---------- helper 3D ---------- */
-function mat(color,rough){return new THREE.MeshStandardMaterial({color:color,roughness:(rough===undefined?0.85:rough),metalness:0});}
-function ball(r,color,x,y,z){const m=new THREE.Mesh(new THREE.SphereGeometry(r,24,18),mat(color));m.position.set(x||0,y||0,z||0);m.castShadow=true;return m;}
-function box(w,h,d,color,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));m.position.set(x||0,y||0,z||0);m.castShadow=true;return m;}
-function cyl(rt,rb,h,color,x,y,z,seg){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||24),mat(color));m.position.set(x||0,y||0,z||0);m.castShadow=true;return m;}
-function cone(r,h,color,x,y,z){const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,24),mat(color));m.position.set(x||0,y||0,z||0);m.castShadow=true;return m;}
-function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
-function labelSprite(text,bg,fg){
-  const c=document.createElement('canvas');c.width=512;c.height=128;
-  const g=c.getContext('2d');
-  g.fillStyle=bg||'#ffffff';roundRect(g,6,14,500,100,46);g.fill();
-  g.fillStyle=fg||'#3d4a6b';g.font='800 44px "Baloo 2", system-ui, sans-serif';
-  g.textAlign='center';g.textBaseline='middle';g.fillText(text,256,66);
-  const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
-  sp.scale.set(3.4,0.85,1);return sp;
-}
-function noticeBoard(key){
-  const d=INFO[key];if(!d)return new THREE.Group();
-  const c=document.createElement('canvas');c.width=512;c.height=352;
-  const g=c.getContext('2d');
-  g.fillStyle='#fff8ec';g.fillRect(0,0,512,352);
-  g.strokeStyle='#8a5a3b';g.lineWidth=12;g.strokeRect(6,6,500,340);
-  g.fillStyle='#3d4a6b';g.font='800 42px "Baloo 2", system-ui, sans-serif';
-  g.textAlign='center';g.textBaseline='top';
-  g.fillText(d.title,256,22);
-  g.fillStyle='#4a5568';g.font='27px system-ui, sans-serif';g.textAlign='left';
-  const words=d.text.split(' ');
-  let line='',y=86;
-  for(let i=0;i<words.length;i++){
-    const t=line?line+' '+words[i]:words[i];
-    if(g.measureText(t).width>452&&line){g.fillText(line,30,y);line=words[i];y+=34;if(y>300)break;}
-    else line=t;
-  }
-  if(line&&y<=300)g.fillText(line,30,y);
-  const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;
-  const grp=new THREE.Group();
-  grp.add(box(2.9,2.3,0.12,0x8a5a3b,0,1.6,0));
-  const paper=new THREE.Mesh(new THREE.PlaneGeometry(2.66,1.83),new THREE.MeshBasicMaterial({map:tex}));
-  paper.position.set(0,1.6,0.07);grp.add(paper);
-  const texBack=new THREE.CanvasTexture(c);texBack.anisotropy=4;
-  const paperBack=new THREE.Mesh(new THREE.PlaneGeometry(2.66,1.83),new THREE.MeshBasicMaterial({map:texBack}));
-  paperBack.position.set(0,1.6,-0.07);paperBack.rotation.y=Math.PI;grp.add(paperBack);
-  grp.add(box(0.14,0.9,0.14,0x8a5a3b,-1.15,0.45,0));
-  grp.add(box(0.14,0.9,0.14,0x8a5a3b,1.15,0.45,0));
-  grp.userData.key=key;
-  return grp;
-}
-function glowSprite(color){
-  const c=document.createElement('canvas');c.width=128;c.height=128;
-  const g=c.getContext('2d');
-  const gr=g.createRadialGradient(64,64,4,64,64,62);
-  gr.addColorStop(0,color);gr.addColorStop(1,'rgba(255,255,255,0)');
-  g.fillStyle=gr;g.fillRect(0,0,128,128);
-  const tex=new THREE.CanvasTexture(c);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
-  return sp;
-}
-
-/* ---------- orbit seret + zoom + ketuk ---------- */
-function createOrbit(canvas,camera,target,opts){
-  let theta=(opts.theta!==undefined?opts.theta:0.6),phi=opts.phi||1.05,radius=opts.radius||15;
-  const baseR=radius,minR=opts.minR||9,maxR=opts.maxR||24,minPhi=0.4,maxPhi=1.35;
-  const pointers=new Map();
-  let lx=0,ly=0,moved=0,downT=0,pinchD=0;
-  function apply(){
-    phi=Math.max(minPhi,Math.min(maxPhi,phi));
-    radius=Math.max(minR,maxR*0.2,Math.min(maxR,radius));
-    camera.position.set(
-      target.x+radius*Math.sin(phi)*Math.sin(theta),
-      target.y+radius*Math.cos(phi),
-      target.z+radius*Math.sin(phi)*Math.cos(theta));
-    camera.lookAt(target);
-  }
-  function ptrDist(){
-    const a=[...pointers.values()];
-    return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
-  }
-  canvas.addEventListener('pointerdown',function(e){
-    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pointers.size===1){lx=e.clientX;ly=e.clientY;moved=0;downT=performance.now();}
-    if(pointers.size===2)pinchD=ptrDist();
-    try{canvas.setPointerCapture(e.pointerId);}catch(_){}
-  });
-  canvas.addEventListener('pointermove',function(e){
-    if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pointers.size===2){
-      const d=ptrDist();
-      if(pinchD>0){radius*=pinchD/d;apply();}
-      pinchD=d;return;
-    }
-    if(pointers.size===1){
-      const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
-      theta-=dx*0.005;phi-=dy*0.004;apply();
-    }
-  });
-  function endPointer(e){
-    pointers.delete(e.pointerId);
-    if(pointers.size===0){
-      if(moved<8&&performance.now()-downT<400&&opts.onTap)opts.onTap(e);
-      pinchD=0;
-    }
-  }
-  canvas.addEventListener('pointerup',endPointer);
-  canvas.addEventListener('pointercancel',endPointer);
-  canvas.addEventListener('wheel',function(e){e.preventDefault();radius*=(1+Math.sign(e.deltaY)*0.08);apply();},{passive:false});
-  apply();
-  return {apply:apply,setRadius:function(r){radius=r;apply();},addTheta:function(d){theta+=d;apply();},baseR:baseR,getTheta:function(){return theta;}};
-}
-const _rc=new THREE.Raycaster();
-function pick(e,canvas,camera,roots){
-  const r=canvas.getBoundingClientRect();
-  const ndc=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-  _rc.setFromCamera(ndc,camera);
-  const hits=_rc.intersectObjects(roots,true);
-  if(!hits.length)return null;
-  let o=hits[0].object;
-  while(o&&!o.userData.key)o=o.parent;
-  return o;
-}
-function makeRenderer(canvas){
-  const r=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
-  r.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-  r.shadowMap.enabled=true;
-  r.shadowMap.type=THREE.PCFSoftShadowMap;
-  return r;
-}
-function addLights(scene){
-  scene.add(new THREE.HemisphereLight(0xfff6e0,0x9fd8a8,0.85));
-  const sun=new THREE.DirectionalLight(0xfff2cc,0.95);
-  sun.position.set(6,10,4);sun.castShadow=true;
-  sun.shadow.mapSize.set(1024,1024);
-  sun.shadow.camera.left=-22;sun.shadow.camera.right=22;
-  sun.shadow.camera.top=22;sun.shadow.camera.bottom=-22;
-  sun.shadow.camera.far=30;
-  scene.add(sun);
-}
-
-/* ---------- avatar lucu ---------- */
-function faceTexture(){
-  const c=document.createElement('canvas');c.width=128;c.height=128;
-  const g=c.getContext('2d');
-  g.clearRect(0,0,128,128);
-  g.strokeStyle='#22242a';g.lineWidth=9;g.lineCap='round';
-  g.beginPath();g.arc(64,62,26,Math.PI*0.15,Math.PI*0.85);g.stroke();
-  return new THREE.CanvasTexture(c);
-}
-function buildAvatar(){
-  const g=new THREE.Group();
-  const yel=0xf5cd30,blu=0x0d69ac,grn=0xa4bd47,amber=0xf59e0b,dark=0x22242a;
-  function leg(side){
-    const p=new THREE.Group();p.position.set(0.2*side,0.78,0);
-    p.add(box(0.34,0.78,0.38,grn,0,-0.39,0));
-    return p;
-  }
-  const legL=leg(-1),legR=leg(1);
-  const body=box(0.92,0.86,0.5,blu,0,1.21,0);
-  function arm(side){
-    const p=new THREE.Group();p.position.set(0.63*side,1.6,0);
-    p.add(box(0.3,0.8,0.34,yel,0,-0.4,0));
-    return p;
-  }
-  const armL=arm(-1),armR=arm(1);
-  const head=new THREE.Group();head.position.set(0,1.64,0);
-  head.add(box(0.62,0.58,0.58,yel,0,0.29,0));
-  head.add(box(0.68,0.13,0.62,amber,0,0.64,0));
-  head.add(box(0.68,0.06,0.3,amber,0,0.58,0.38));
-  const face=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.5),new THREE.MeshBasicMaterial({map:faceTexture(),transparent:true}));
-  face.position.set(0,0.3,0.3);head.add(face);
-  const eyeL=box(0.09,0.14,0.03,dark,-0.13,0.38,0.32);
-  const eyeR=box(0.09,0.14,0.03,dark,0.13,0.38,0.32);
-  head.add(eyeL,eyeR);
-  g.add(legL,legR,body,armL,armR,head);
-  g.rotation.y=0;
-  g.userData.key='avatar';
-  return {group:g,armR:armR,armL:armL,legL:legL,legR:legR,head:head,eyeL:eyeL,eyeR:eyeR};
-}
-
-/* ---------- DUNIA 1: pulauku (branding / CV) ---------- */
-const W1={clickables:[],clouds:[],landings:[],trees:[],steps:[],path:[],solids:[]};
-let renderer1,scene1,camera1,avatar;
-function buildWorld1(){
-  scene1=new THREE.Scene();
-  camera1=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,120);
-  renderer1=makeRenderer($('c1'));
-  addLights(scene1);
-  const sunBall=ball(1.1,0xffe08a,-14,10,-16);sunBall.castShadow=false;scene1.add(sunBall);
-  const glow=glowSprite('rgba(255,214,120,0.9)');glow.position.set(-14,10,-16);glow.scale.set(7,7,1);scene1.add(glow);
-  // pulau (lebih luas) + tanah ber-stud
-  const island=new THREE.Group();
-  const studTex=(()=>{const c=document.createElement('canvas');c.width=512;c.height=512;const g=c.getContext('2d');
-    g.fillStyle='#4b974b';g.fillRect(0,0,512,512);
-    for(let i=0;i<24;i++)for(let j=0;j<24;j++){
-      const x=i*21.33+10.7,y=j*21.33+10.7;
-      g.fillStyle='#3d8b40';g.beginPath();g.arc(x+1.5,y+2,8,0,Math.PI*2);g.fill();
-      g.fillStyle='#63c76a';g.beginPath();g.arc(x,y,6.8,0,Math.PI*2);g.fill();
-    }
-    const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t;})();
-  const islandTop=new THREE.Mesh(new THREE.CylinderGeometry(20,20,0.5,48),
-    [mat(0x4b974b),new THREE.MeshLambertMaterial({map:studTex}),mat(0x4b974b)]);
-  islandTop.position.set(0,-0.25,0);islandTop.castShadow=true;islandTop.receiveShadow=true;
-  island.add(islandTop);
-  W1.islandTop=islandTop;
-  island.add(cyl(19,15,1.6,0xd9a066,0,-1.3,0));
-  const tip=cone(15,3,0xc98f5f,0,-3.6,0);tip.rotation.x=Math.PI;island.add(tip);
-  scene1.add(island);
-  // ---------- gunung ----------
-  const MT={R:12,H:9.5,TURNS:2,STEPS:48,R0:12.6,R1:3.6};
-  function coneY(r){return r>=MT.R?0:MT.H*(1-r/MT.R);}
-  function pathPoint(i){
-    const f=i/MT.STEPS;
-    const th=f*MT.TURNS*Math.PI*2;
-    const r=MT.R0+(MT.R1-MT.R0)*f;
-    const y=(r>=MT.R?0.2:coneY(r)+0.35);
-    return {x:r*Math.sin(th),y:y,z:r*Math.cos(th),th:th,r:r};
-  }
-  W1.path=[];
-  for(let i=0;i<=MT.STEPS;i++)W1.path.push(pathPoint(i));
-  W1.path[MT.STEPS]={x:0,y:7.0,z:2.2,th:Math.PI*4,r:0};
-  // badan gunung: gradasi hijau -> coklat -> batu -> salju
-  const gradTex=(()=>{const c=document.createElement('canvas');c.width=16;c.height=256;const g=c.getContext('2d');
-    const gr=g.createLinearGradient(0,256,0,0);
-    gr.addColorStop(0,'#4b974b');gr.addColorStop(0.45,'#7a9a4b');gr.addColorStop(0.62,'#8a7a5a');gr.addColorStop(0.82,'#8d8d8d');gr.addColorStop(1,'#f4f8ff');
-    g.fillStyle=gr;g.fillRect(0,0,16,256);
-    return new THREE.CanvasTexture(c);})();
-  const mountain=new THREE.Mesh(new THREE.ConeGeometry(12,9.5,48),new THREE.MeshLambertMaterial({map:gradTex}));
-  mountain.position.set(0,4.25,0);mountain.castShadow=true;mountain.receiveShadow=true;
-  scene1.add(mountain);W1.mountain=mountain;
-  // anak tangga + pos pendakian (tiap pos = satu info)
-  const LANDINGS=[
-    {idx:0,key:'tentang',label:'1. Tentang saya'},
-    {idx:5,key:'pendidikan',label:'2. Pendidikan'},
-    {idx:10,key:'pekerjaan',label:'3. Pekerjaan'},
-    {idx:15,key:'ai',label:'4. AI & Web'},
-    {idx:20,key:'aiuntuksemua',label:'5. AI Untuk Semua'},
-    {idx:25,key:'minechart',label:'6. MineChart.studio'},
-    {idx:30,key:'pulau',label:'7. Pulau Komunitas'},
-    {idx:35,key:'mission',label:'8. Mission Control'},
-    {idx:40,key:'sheet',label:'9. Sheet-manager'},
-    {idx:45,key:'openidm',label:'10. open-idm'}
-  ];
-  const LAND_BY_IDX={};LANDINGS.forEach(function(L){LAND_BY_IDX[L.idx]=L;});
-  const SECTION_COLORS=[0xf5cd30,0xff8c1a,0xff8f6b,0x5ec8b8,0x0d69ac,0x7c3aed,0x4b974b,0xff9eb5,0xe2231a,0xffc46b];
-  W1.steps=[];W1.landings=[];
-  for(let i=0;i<MT.STEPS;i++){
-    const p=W1.path[i];
-    const L=LAND_BY_IDX[i];
-    const col=SECTION_COLORS[Math.floor(i/5)];
-    const w=L?3.0:2.2,d=L?2.2:1.5;
-    const st=box(w,0.35,d,col,0,0,0);
-    st.position.set(p.x,p.y-0.175,p.z);st.rotation.y=p.th;
-    st.userData.pathIdx=i;
-    scene1.add(st);W1.steps.push(st);
-    if(L){
-      const hr=p.r+1.6,hy=coneY(hr);
-      const hut=new THREE.Group();
-      hut.position.set(hr*Math.sin(p.th),hy,hr*Math.cos(p.th));
-      hut.rotation.y=p.th+Math.PI;
-      hut.userData.key=L.key;hut.userData.pathIdx=i;
-      hut.add(box(1.4,1.0,1.2,0xb07a4a,0,0.5,0));
-      const roof=new THREE.Mesh(new THREE.ConeGeometry(1.15,0.7,4),mat(0x8a5a3b));
-      roof.rotation.y=Math.PI/4;roof.position.set(0,1.35,0);roof.castShadow=true;hut.add(roof);
-      hut.add(box(0.36,0.55,0.06,0x3d4a6b,0,0.35,0.62));
-      const sp=labelSprite(L.label);sp.scale.set(2.7,0.68,1);sp.position.set(0,2.4,0);
-      sp.userData.baseY=2.4;hut.add(sp);
-      scene1.add(hut);W1.clickables.push(hut);W1.landings.push(sp);
-      W1.solids.push({x:hr*Math.sin(p.th),z:hr*Math.cos(p.th),r:1.0});
-      const br=p.r+3.1,bhy=coneY(br);
-      const board=noticeBoard(L.key);
-      board.position.set(br*Math.sin(p.th),bhy,br*Math.cos(p.th));
-      board.rotation.y=p.th+Math.PI;
-      board.userData.pathIdx=i;
-      scene1.add(board);W1.clickables.push(board);
-      W1.solids.push({x:br*Math.sin(p.th),z:br*Math.cos(p.th),r:0.9});
-    }
-  }
-  // puncak: platform salju + roket + bendera
-  const summit=new THREE.Group();summit.userData.key='home';summit.userData.pathIdx=MT.STEPS;
-  summit.add(cyl(3.2,3.2,0.4,0xf4f8ff,0,6.8,0));
-  const rocket=new THREE.Group();
-  rocket.add(cyl(0.45,0.45,1.4,0xffffff,0,1.15,0));
-  rocket.add(cone(0.45,0.8,0xff8f6b,0,2.25,0));
-  rocket.add(ball(0.16,0x9fd8f0,0,1.35,0.42));
-  for(let i=0;i<3;i++){
-    const fin=box(0.08,0.55,0.42,0xff8f6b,0,0.55,0);
-    const a=i*Math.PI*2/3;
-    fin.position.set(Math.sin(a)*0.45,0.55,Math.cos(a)*0.45);
-    fin.rotation.y=a;rocket.add(fin);
-  }
-  const rocketFlame=cone(0.28,0.7,0xffc46b,0,0.1,0);rocketFlame.rotation.x=Math.PI;rocket.add(rocketFlame);
-  rocket.scale.setScalar(1.25);
-  rocket.position.set(0,7.0,0);
-  summit.add(rocket);
-  W1.rocket=rocket;W1.rocketFlame=rocketFlame;
-  summit.add(cyl(0.05,0.05,1.8,0x8a5a3b,1.6,7.9,0.9));
-  summit.add(box(0.8,0.5,0.05,0xff8f6b,1.95,8.7,0.9));
-  const spTop=labelSprite('Puncak');spTop.scale.set(2.7,0.68,1);spTop.position.set(0,10.2,0);
-  spTop.userData.baseY=10.2;summit.add(spTop);W1.landings.push(spTop);
-  scene1.add(summit);W1.clickables.push(summit);
-  const boardTop=noticeBoard('home');
-  boardTop.position.set(-1.8,7.0,-1.8);boardTop.rotation.y=Math.PI/4;
-  boardTop.userData.pathIdx=MT.STEPS;
-  scene1.add(boardTop);W1.clickables.push(boardTop);
-  // base camp: tenda + api unggun
-  const camp=new THREE.Group();camp.position.set(-14,0,7);
-  const tent=new THREE.Mesh(new THREE.ConeGeometry(1.3,1.5,4),mat(0xff8f6b));
-  tent.rotation.y=Math.PI/4;tent.position.set(0,0.75,0);tent.castShadow=true;camp.add(tent);
-  camp.add(box(0.5,0.6,0.05,0x3d4a6b,0,0.35,0.92));
-  const fire=new THREE.Group();fire.position.set(2.2,0,0.6);
-  for(let i=0;i<6;i++){
-    const a=i*Math.PI/3;
-    fire.add(ball(0.22,0x9aa5b1,Math.sin(a)*0.55,0.1,Math.cos(a)*0.55));
-  }
-  const log1=cyl(0.09,0.09,0.9,0xb07a4a,0,0.18,0);log1.rotation.z=Math.PI/2;log1.rotation.y=0.6;fire.add(log1);
-  const log2=cyl(0.09,0.09,0.9,0xb07a4a,0,0.18,0);log2.rotation.z=Math.PI/2;log2.rotation.y=-0.6;fire.add(log2);
-  const flame=cone(0.32,0.8,0xffc46b,0,0.6,0);fire.add(flame);
-  const fglow=glowSprite('rgba(255,180,80,0.85)');fglow.position.set(0,0.7,0);fglow.scale.set(3,3,1);fire.add(fglow);
-  camp.add(fire);
-  scene1.add(camp);
-  W1.flame=flame;W1.fglow=fglow;
-  // kolam
-  const pond=new THREE.Group();pond.position.set(14,0,11);
-  pond.add(cyl(2.5,2.5,0.06,0xe8d9a0,0,0.02,0));
-  pond.add(cyl(2.2,2.2,0.12,0x7fc8e8,0,0.06,0));
-  [[-1.6,1.2],[1.8,0.9],[-0.6,-1.9]].forEach(function(p){
-    pond.add(cone(0.12,0.9,0x6ec98a,p[0],0.5,p[1]));
-  });
-  scene1.add(pond);
-  W1.baseObstacles=[{x:14,z:11,r:2.6},{x:-14,z:7,r:1.8}];
-  W1.baseObstacles.forEach(function(ob){W1.solids.push(ob);});
-  // pepohonan di tepi pulau
-  function tree(x,z,s){
-    const t=new THREE.Group();t.position.set(x,0,z);t.scale.setScalar(s||1);
-    t.add(box(0.34,1.1,0.34,0xb07a4a,0,0.55,0));
-    t.add(box(1.6,1.2,1.6,0x4b974b,0,1.7,0));
-    t.add(box(1.1,0.8,1.1,0x63c76a,0,2.6,0));
-    scene1.add(t);W1.trees.push(t);W1.solids.push({x:x,z:z,r:0.7});return t;
-  }
-  tree(-19,-6,1.1);tree(19,4,1.2);tree(-3,-19,1);tree(8,19,1.05);tree(-12,-16,0.95);tree(18,-9,1);tree(-18,11,1.1);tree(5,-19,0.9);
-  // bunga-bunga
-  const petals=[0xff9eb5,0xffc46b,0xc9b6f2,0xff8f6b,0x7fd1c0];
-  [[-15,3],[15,7],[-16,-10],[16,-13],[13,15],[-14,-13],[10,-15],[-8,16],[17,12],[-17,-2],[4,17],[12,-16]].forEach(function(p,i){
-    const f=new THREE.Group();f.position.set(p[0],0,p[1]);
-    f.add(cyl(0.03,0.03,0.5,0x6ec98a,0,0.25,0));
-    f.add(ball(0.18,petals[i%petals.length],0,0.55,0));
-    scene1.add(f);
-  });
-  // pulau kecil
-  const islet=new THREE.Group();islet.position.set(25,-1.4,-14);
-  islet.add(cyl(1.6,1.6,0.3,0x8fd694,0,0,0));
-  const itip=cone(1.5,1.2,0xc98f5f,0,-0.75,0);itip.rotation.x=Math.PI;islet.add(itip);
-  islet.add(cyl(0.09,0.12,0.7,0xb07a4a,0,0.5,0));
-  islet.add(box(0.9,0.7,0.9,0x4b974b,0,1.05,0));
-  scene1.add(islet);
-  // batu & semak di tepi
-  [[-18,14],[17,13],[-6,19],[14,-17]].forEach(function(p,i){
-    const r=ball(0.4+i*0.08,0x9aa5b1,p[0],0.2,p[1]);r.scale.set(1,0.7,1);scene1.add(r);
-    W1.solids.push({x:p[0],z:p[1],r:0.6});
-  });
-  [[-16,-16],[16,-15],[0,19]].forEach(function(p){
-    const b=ball(0.6,0x6ec98a,p[0],0.35,p[1]);b.scale.set(1,0.7,1);scene1.add(b);
-  });
-  // awan (lebih tinggi, di atas puncak)
-  for(let i=0;i<4;i++){
-    const cl=new THREE.Group();
-    const y=11.5+i*0.8,x=-26+i*17,z=-13-(i%2)*4;
-    cl.add(ball(0.9,0xffffff,0,0,0));
-    cl.add(ball(0.65,0xffffff,0.85,0.1,0.2));
-    cl.add(ball(0.6,0xffffff,-0.85,0.05,-0.1));
-    cl.children.forEach(function(m){m.castShadow=false;});
-    cl.position.set(x,y,z);
-    cl.userData.speed=0.12+Math.random()*0.1;
-    scene1.add(cl);W1.clouds.push(cl);
-  }
-  // avatar di trailhead
-  avatar=buildAvatar();
-  avatar.group.scale.setScalar(1.25);
-  const start=W1.path[0];
-  avatar.group.position.set(start.x,start.y,start.z);
-  scene1.add(avatar.group);
-  W1.clickables.push(avatar.group);
-  const marker=new THREE.Mesh(new THREE.RingGeometry(0.55,0.75,32),new THREE.MeshBasicMaterial({color:0x5ec8b8,transparent:true,opacity:0.5,side:THREE.DoubleSide}));
-  marker.rotation.x=-Math.PI/2;marker.position.set(start.x,start.y+0.05,start.z);
-  scene1.add(marker);W1.marker=marker;
-  const target1=new THREE.Vector3(start.x,start.y+1.2,start.z);
-  W1.target=target1;
-  orbit1=createOrbit($('c1'),camera1,target1,{theta:0,phi:1.02,radius:24,minR:10,maxR:40,onTap:function(e){
-    const hit=pick(e,$('c1'),camera1,W1.clickables);
-    if(hit){
-      if(hit.userData.key==='avatar'){wave();showInfo('avatar');}
-      else if(hit.userData.pathIdx!==undefined){walkToPath(hit.userData.pathIdx,hit.userData.key);}
-      else if(hit.userData.key){showInfo(hit.userData.key);}
-      return;
-    }
-    const pi=pickPath(e);
-    if(pi!==null){walkToPath(pi,null);return;}
-    const ci=conePathIdx(e);
-    if(ci!==null){walkToPath(ci,null);return;}
-    const pt=groundPoint(e,$('c1'),camera1);
-    if(pt){hidePanel();walkToBase(pt.x,pt.z);}
-  }});
-}
-
-/* ---------- avatar berjalan ---------- */
-/* ---------- avatar mendaki ---------- */
-const WALK_SPEED=2.6,CLIMB_SPEED=4.2;
-let walkTarget=null,walkPhase=0,pendingInfo=null,pathTarget=null,pathPos=0,baseLeg=null,onPath=true;
-let avY=0.2,vy=0,grounded=true,falling=false;
-let toastTimer=null;
-function showToast(msg){
-  const el=$('toast');el.textContent=msg;el.classList.remove('hide');
-  if(toastTimer)clearTimeout(toastTimer);
-  toastTimer=setTimeout(function(){el.classList.add('hide');},2600);
-}
-function doJump(){if(grounded&&!falling){vy=6.5;grounded=false;}}
-function respawn(){
-  falling=false;grounded=true;vy=0;avY=0.2;
-  pathPos=0;pathTarget=null;walkTarget=null;baseLeg=null;pendingInfo=null;onPath=true;
-  avatar.group.position.set(0,0.2,12.6);
-  W1.target.set(0,1.4,12.6);
-  hidePanel();
-  showToast('Jatuh dari pulau! Kembali ke base camp.');
-}
-function collideSolids(){
-  const p=avatar.group.position;
-  for(let i=0;i<W1.solids.length;i++){
-    const s=W1.solids[i];
-    const dx=p.x-s.x,dz=p.z-s.z;
-    const d=Math.hypot(dx,dz),min=s.r+0.5;
-    if(d<min&&d>0.001){const k=min/d;p.x=s.x+dx*k;p.z=s.z+dz*k;}
-  }
-}
-const KEYS={};
-window.addEventListener('keydown',function(e){if(e.code==='Space'){e.preventDefault();doJump();return;}KEYS[e.key.toLowerCase()]=true;});
-window.addEventListener('keyup',function(e){KEYS[e.key.toLowerCase()]=false;});
-function groundPoint(e,canvas,camera){
-  const r=canvas.getBoundingClientRect();
-  const ndc=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-  _rc.setFromCamera(ndc,camera);
-  const hits=_rc.intersectObject(W1.islandTop,true);
-  return hits.length?hits[0].point:null;
-}
-function pathPosToVec(p){
-  const i=Math.max(0,Math.min(W1.path.length-1,Math.floor(p)));
-  const j=Math.min(W1.path.length-1,i+1),f=Math.max(0,Math.min(1,p-i));
-  const a=W1.path[i],b=W1.path[j];
-  return {x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f,z:a.z+(b.z-a.z)*f};
-}
-function pickPath(e){
-  const r=$('c1').getBoundingClientRect();
-  const ndc=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-  _rc.setFromCamera(ndc,camera1);
-  const hits=_rc.intersectObjects(W1.steps,true);
-  if(!hits.length)return null;
-  let o=hits[0].object;
-  while(o&&o.userData.pathIdx===undefined)o=o.parent;
-  return o?o.userData.pathIdx:null;
-}
-function conePathIdx(e){
-  const r=$('c1').getBoundingClientRect();
-  const ndc=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-  _rc.setFromCamera(ndc,camera1);
-  const hits=_rc.intersectObject(W1.mountain,true);
-  if(!hits.length)return null;
-  const p=hits[0].point;
-  let best=0,bd=1e9;
-  W1.path.forEach(function(pt,i){
-    const d=Math.hypot(pt.x-p.x,pt.y-p.y,pt.z-p.z);
-    if(d<bd){bd=d;best=i;}
-  });
-  return best;
-}
-function walkToPath(idx,infoKey){
-  pendingInfo=null;
-  if(waveT>=0){avatar.armR.rotation.z=0;avatar.head.rotation.z=0;waveT=-1;}
-  if(pathPos<0.05){
-    const th=W1.path[0];
-    baseLeg={x:th.x,z:th.z,afterPath:idx};
-    walkTarget={x:th.x,z:th.z};
-  }else{
-    baseLeg=null;pathTarget=idx;
-  }
-  if(infoKey)pendingInfo=infoKey;
-}
-function walkToBase(x,z){
-  let d=Math.hypot(x,z);
-  if(d<12.6&&d>0.001){x*=12.6/d;z*=12.6/d;}
-  W1.solids.forEach(function(ob){
-    const dx=x-ob.x,dz=z-ob.z,dd=Math.hypot(dx,dz),min=ob.r+0.6;
-    if(dd<min){
-      if(dd<=0.001){x=ob.x+min;z=ob.z;}
-      else{x=ob.x+dx/dd*min;z=ob.z+dz/dd*min;}
-    }
-  });
-  pendingInfo=null;
-  if(waveT>=0){avatar.armR.rotation.z=0;avatar.head.rotation.z=0;waveT=-1;}
-  if(pathPos>0.05){baseLeg={x:x,z:z,afterPath:null};pathTarget=0;}
-  else{baseLeg=null;onPath=false;walkTarget={x:x,z:z};}
-}
-
-/* ---------- animasi, resize ---------- */
-let orbit1=null;
-let waveT=-1,blinkT=0,nextBlink=2.5;
-function wave(){waveT=0;}
-function resizeActive(){
-  const w=innerWidth,h=innerHeight;
-  const boost=(w/h<0.75)?0.9:1;
-  if(renderer1){
-    renderer1.setSize(w,h,false);
-    camera1.aspect=w/h;camera1.updateProjectionMatrix();
-    if(orbit1&&$('panel').classList.contains('hide'))orbit1.setRadius(24*boost);
-    if(avatar)avatar.group.scale.setScalar((w/h<0.75)?1.6:1.25);
-  }
-  $('hint').textContent=(w<640)?'Ketuk tangga / pos \u2022 DPad untuk jalan':'Ketuk tangga / pos: karakter mendaki ke sana \u2022 W/S naik-turun \u2022 Seret untuk memutar \u2022 Cubit / scroll untuk zoom';
-  updateDpad();
-}
-window.addEventListener('resize',resizeActive);
-
-const clock=new THREE.Clock();
-function tick(){
-  requestAnimationFrame(tick);
-  const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
-  // avatar: napas + kedip + lambaian
-  let jump=0;
-  if(waveT>=0){
-    waveT+=dt;
-    const k=Math.min(waveT/1.4,1);
-    avatar.armR.rotation.z=-2.3+Math.sin(waveT*10)*0.25*k;
-    jump=Math.sin(Math.min(waveT/0.9,1)*Math.PI)*0.55;
-    avatar.head.rotation.z=Math.sin(waveT*6)*0.08*k;
-    if(waveT>1.5){waveT=-1;avatar.armR.rotation.z=0;avatar.head.rotation.z=0;}
-  }
-  // DPad: putar kamera
-  if(DKEYS.left)orbit1.addTheta(dt*1.5);
-  if(DKEYS.right)orbit1.addTheta(-dt*1.5);
-  // bergerak: mendaki (path), jalan di base camp, atau WASD
-  let mv=null;
-  if(pathTarget!==null){
-    const dir=Math.sign(pathTarget-pathPos);
-    if(dir===0||Math.abs(pathTarget-pathPos)<0.02){
-      pathPos=pathTarget;
-      const done=pathTarget;pathTarget=null;
-      if(done===0&&baseLeg){walkTarget={x:baseLeg.x,z:baseLeg.z};baseLeg=null;onPath=false;}
-      else if(pendingInfo){showInfo(pendingInfo,true);pendingInfo=null;}
-    }else{
-      const step=CLIMB_SPEED*dt/2.0;
-      const np=pathPos+dir*Math.min(step,Math.abs(pathTarget-pathPos));
-      const a=pathPosToVec(pathPos),b=pathPosToVec(np);
-      const dx=b.x-a.x,dz=b.z-a.z,dl=Math.hypot(dx,dz);
-      if(dl>0.001)mv={x:dx/dl,z:dz/dl,step:Math.min(dl,CLIMB_SPEED*dt)};
-      pathPos=np;
-    }
-  }else if(walkTarget){
-    const dx=walkTarget.x-avatar.group.position.x,dz=walkTarget.z-avatar.group.position.z;
-    const dist=Math.hypot(dx,dz);
-    if(dist<0.08){walkTarget=null;if(baseLeg&&baseLeg.afterPath!==null){pathTarget=baseLeg.afterPath;baseLeg=null;onPath=true;}}
-    else mv={x:dx/dist,z:dz/dist,step:Math.min(WALK_SPEED*dt,dist)};
-  }else{
-    const th=orbit1?orbit1.getTheta():0;
-    if(onPath){
-      if(KEYS['w']||KEYS['arrowup']||DKEYS.up){pathTarget=Math.min(W1.path.length-1,Math.floor(pathPos)+1);pendingInfo=null;}
-      else if(KEYS['s']||KEYS['arrowdown']||DKEYS.down){pathTarget=Math.max(0,Math.ceil(pathPos)-1);pendingInfo=null;}
-    }else{
-      const fx=-Math.sin(th),fz=-Math.cos(th),rx=-fz,rz=fx;
-      let kx=0,kz=0;
-      if(KEYS['w']||KEYS['arrowup']||DKEYS.up){kx+=fx;kz+=fz;}
-      if(KEYS['s']||KEYS['arrowdown']||DKEYS.down){kx-=fx;kz-=fz;}
-      if(KEYS['d']||KEYS['arrowright']){kx+=rx;kz+=rz;}
-      if(KEYS['a']||KEYS['arrowleft']){kx-=rx;kz-=rz;}
-      const kl=Math.hypot(kx,kz);
-      if(kl>0.01){mv={x:kx/kl,z:kz/kl,step:WALK_SPEED*dt};pendingInfo=null;}
-    }
-  }
-  if(falling)mv=null;
-  const groundY=onPath?pathPosToVec(pathPos).y:0;
-  if(mv){
-    const targetRot=Math.atan2(mv.x,mv.z);
-    let dr=targetRot-avatar.group.rotation.y;
-    while(dr>Math.PI)dr-=Math.PI*2;
-    while(dr<-Math.PI)dr+=Math.PI*2;
-    avatar.group.rotation.y+=dr*Math.min(1,dt*10);
-    avatar.group.position.x+=mv.x*mv.step;
-    avatar.group.position.z+=mv.z*mv.step;
-    if(!onPath){
-      const dd=Math.hypot(avatar.group.position.x,avatar.group.position.z);
-      if(dd<12.6&&dd>0.001){avatar.group.position.x*=12.6/dd;avatar.group.position.z*=12.6/dd;}
-      collideSolids();
-      if(!falling&&Math.hypot(avatar.group.position.x,avatar.group.position.z)>20){
-        falling=true;grounded=false;vy=0;
-        walkTarget=null;pathTarget=null;baseLeg=null;pendingInfo=null;
+  <!-- Import Map Three.js v0.160.0 & OrbitControls -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
       }
     }
-    walkPhase+=mv.step*4.2;
-    const sw=Math.sin(walkPhase);
-    avatar.legL.rotation.x=sw*0.55;
-    avatar.legR.rotation.x=-sw*0.55;
-    avatar.armL.rotation.x=-sw*0.4;
-    avatar.armR.rotation.x=sw*0.4;
-  }else{
-    avatar.legL.rotation.x*=0.8;
-    avatar.legR.rotation.x*=0.8;
-    avatar.armL.rotation.x*=0.8;
-    avatar.armR.rotation.x*=0.8;
-  }
-  // fisika vertikal: lompat + jatuh
-  if(falling){
-    vy+=-14*dt;avY+=vy*dt;
-    if(avY<-12)respawn();
-  }else if(!grounded){
-    vy+=-14*dt;avY+=vy*dt;
-    if(avY<=groundY){avY=groundY;vy=0;grounded=true;}
-  }else{
-    avY=groundY;
-  }
-  avatar.group.position.y=avY+Math.sin(t*2)*0.05+(mv?Math.abs(Math.cos(walkPhase))*0.07:0)+jump;
-  blinkT+=dt;
-  if(blinkT>nextBlink){
-    const b=blinkT-nextBlink;
-    const bs=b<0.12?0.12:1;
-    avatar.eyeL.scale.y=bs;avatar.eyeR.scale.y=bs;
-    if(b>0.24){blinkT=0;nextBlink=2.5+Math.random()*2;avatar.eyeL.scale.y=1;avatar.eyeR.scale.y=1;}
-  }
-  W1.clouds.forEach(function(c){
-    c.position.x+=c.userData.speed*dt;
-    if(c.position.x>30)c.position.x=-30;
-  });
-  W1.landings.forEach(function(sp,i){
-    sp.position.y=sp.userData.baseY+Math.sin(t*1.5+i*1.1)*0.1;
-  });
-  W1.trees.forEach(function(tr,i){tr.rotation.z=Math.sin(t*0.9+i*1.7)*0.02;});
-  if(W1.flame){W1.flame.scale.y=1+Math.sin(t*9)*0.25+Math.sin(t*23)*0.1;W1.flame.rotation.y=t*2;}
-  if(W1.fglow){const fs=2.6+Math.sin(t*7)*0.4;W1.fglow.scale.set(fs,fs,1);}
-  W1.rocket.position.y=7.0+Math.sin(t*1.8)*0.12;
-  if(W1.rocketFlame)W1.rocketFlame.scale.y=1+Math.sin(t*7)*0.3;
-  if(W1.marker){
-    W1.marker.position.set(avatar.group.position.x,avatar.group.position.y+0.05,avatar.group.position.z);
-    const ms=1+Math.sin(t*2)*0.08;
-    W1.marker.scale.set(ms,ms,1);
-    W1.marker.material.opacity=0.45+Math.sin(t*2)*0.15;
-  }
-  if(orbit1&&W1.target){
-    const fk=Math.min(1,dt*5);
-    W1.target.x+=(avatar.group.position.x-W1.target.x)*fk;
-    W1.target.y+=((avatar.group.position.y+1.2)-W1.target.y)*fk;
-    W1.target.z+=(avatar.group.position.z-W1.target.z)*fk;
-    if(Math.hypot(W1.target.x-avatar.group.position.x,W1.target.y-(avatar.group.position.y+1.2),W1.target.z-avatar.group.position.z)>3){
-      W1.target.x=avatar.group.position.x;W1.target.y=avatar.group.position.y+1.2;W1.target.z=avatar.group.position.z;
+  </script>
+
+  <style>
+    :root {
+      --bg-pill: rgba(15, 23, 42, 0.72);
+      --bg-pill-hover: rgba(30, 41, 59, 0.88);
+      --border-pill: rgba(255, 255, 255, 0.16);
+      --accent: #38bdf8;
+      --accent-warm: #f59e0b;
+      --accent-green: #22c55e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
     }
-    orbit1.apply();
-  }
-  renderer1.render(scene1,camera1);
-}
 
-/* ---------- DPad (layar sentuh / HP) ---------- */
-const DKEYS={up:false,down:false,left:false,right:false};
-document.querySelectorAll('#dpad button').forEach(function(b){
-  const d=b.getAttribute('data-d');
-  if(d==='jump'){
-    b.addEventListener('pointerdown',function(e){e.preventDefault();doJump();});
-    b.addEventListener('contextmenu',function(e){e.preventDefault();});
-    return;
-  }
-  function on(e){e.preventDefault();DKEYS[d]=true;}
-  function off(e){e.preventDefault();DKEYS[d]=false;}
-  b.addEventListener('pointerdown',on);
-  b.addEventListener('pointerup',off);
-  b.addEventListener('pointercancel',off);
-  b.addEventListener('pointerleave',off);
-  b.addEventListener('contextmenu',function(e){e.preventDefault();});
-});
-function updateDpad(){
-  const w=innerWidth,h=innerHeight;
-  const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
-  const show=(touch||w<768)&&$('panel').classList.contains('hide');
-  $('dpad').style.display=show?'grid':'none';
-}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-/* ---------- mulai ---------- */
-buildWorld1();
-resizeActive();
-tick();
-setTimeout(wave,1200);
-window.DUNIA={ready:true,showInfo:showInfo,hidePanel:hidePanel,walkToPath:walkToPath,walkToBase:walkToBase,_w1:{avatar:avatar,camera:camera1,path:function(){return W1.path;},landings:function(){return W1.landings;},setPathPos:function(p){pathPos=p;pathTarget=null;walkTarget=null;baseLeg=null;onPath=p>0.02;avY=pathPosToVec(p).y;vy=0;grounded=true;falling=false;const v=pathPosToVec(p);avatar.group.position.set(v.x,v.y,v.z);W1.target.set(v.x,v.y+1.2,v.z);},walkState:function(){return {pathPos:pathPos,pathTarget:pathTarget,x:avatar.group.position.x,y:avatar.group.position.y,z:avatar.group.position.z};},camTarget:function(){return {x:W1.target.x,y:W1.target.y,z:W1.target.z};},hasMarker:function(){return !!W1.marker;}}};
-</script>
+    html, body {
+      width: 100%;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: #0b1120;
+      color: var(--text-main);
+      overflow-x: hidden;
+      overscroll-behavior-y: none;
+    }
+
+    /* Kontainer Scroll Tak Terlihat (750vh) untuk Scrollytelling Timeline */
+    #scroll-spacer {
+      position: relative;
+      width: 100%;
+      height: 750vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body.play-mode {
+      overflow: hidden;
+      height: 100vh;
+    }
+    body.play-mode #scroll-spacer {
+      height: 100vh;
+    }
+
+    /* Canvas WebGL Full-Screen Fixed */
+    #webgl-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      z-index: 1;
+      touch-action: pan-y;
+      cursor: grab;
+    }
+    #webgl-canvas.dragging {
+      cursor: grabbing;
+    }
+    #webgl-canvas.pointer-hover {
+      cursor: pointer;
+    }
+    body.play-mode #webgl-canvas {
+      touch-action: none;
+    }
+
+    /* Progress Bar Tipis 3px di Paling Atas */
+    #progress-track {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.12);
+      z-index: 60;
+      pointer-events: none;
+    }
+    #progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #38bdf8, #f59e0b);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      transition: width 0.04s linear;
+    }
+
+    /* HUD Telemetri Super Mini (Pojok Kiri Atas) */
+    #telemetry-pill {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      font-size: 12px;
+      line-height: 1;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+      user-select: none;
+    }
+    .tele-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 0.02em;
+    }
+    .tele-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulseDot 1.8s infinite ease-in-out;
+    }
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.35); opacity: 0.6; }
+    }
+    .tele-sep {
+      width: 1px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+    #tele-alt {
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #fde047;
+    }
+    #tele-phase {
+      color: #e2e8f0;
+      font-weight: 600;
+      max-width: 190px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Pill Kontrol Ringkas (Pojok Kanan Atas) */
+    #control-pill {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 5px;
+      padding: 5px 6px;
+      border-radius: 999px;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+      user-select: none;
+    }
+    .pill-select, .pill-btn {
+      appearance: none;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    .pill-select {
+      padding-right: 22px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 7px center;
+    }
+    .pill-select option {
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .pill-btn:hover, .pill-select:hover {
+      background-color: rgba(255, 255, 255, 0.17);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .pill-btn.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: rgba(125, 211, 252, 0.55);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+    }
+    .pill-btn.play-active {
+      background: linear-gradient(135deg, #16a34a, #059669);
+      border-color: rgba(134, 239, 172, 0.6);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+    }
+
+    /* Drawer Pengaturan Studio Modular */
+    #studio-drawer {
+      position: fixed;
+      top: 56px;
+      right: 12px;
+      width: min(300px, calc(100vw - 24px));
+      max-height: calc(100vh - 76px);
+      overflow-y: auto;
+      z-index: 45;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      transform: translateY(-10px) scale(0.97);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #studio-drawer.open {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .studio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .studio-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      color: #f8fafc;
+    }
+    .studio-close {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #cbd5e1;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .studio-section {
+      margin-bottom: 12px;
+    }
+    .studio-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+    .studio-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .studio-grid.cols-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .chip-btn {
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px 6px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .chip-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+    .chip-btn.selected {
+      background: rgba(56, 189, 248, 0.24);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.4);
+    }
+    .boulder-action-btn {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(251, 146, 60, 0.5);
+      background: linear-gradient(135deg, #ea580c, #d97706);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .boulder-action-btn:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    .boulder-action-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Toast Notifikasi Singkat (Bawah Tengah) */
+    #toast-msg {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      z-index: 50;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(10px);
+      font-size: 12px;
+      font-weight: 600;
+      color: #f8fafc;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+      max-width: calc(100vw - 24px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Modal Pembacaan Papan Pengumuman / Petunjuk (Klik 3D Raycaster) */
+    #board-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      background: rgba(2, 6, 23, 0.55);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    #board-modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #board-modal-card {
+      width: min(440px, 100%);
+      border-radius: 20px;
+      background: linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
+      border: 2px solid rgba(250, 204, 21, 0.5);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      padding: 20px;
+      transform: scale(0.94);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #board-modal-backdrop.open #board-modal-card {
+      transform: scale(1);
+    }
+    .modal-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .modal-tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .modal-elev {
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    #modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 10px;
+      line-height: 1.25;
+    }
+    #modal-body {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    #modal-body li {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 8px 11px;
+      border-radius: 10px;
+      border-left: 3px solid #38bdf8;
+    }
+    .modal-text {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #e2e8f0;
+      margin-bottom: 14px;
+    }
+    .modal-link {
+      display: block;
+      text-align: center;
+      padding: 10px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      text-decoration: none;
+      margin-bottom: 10px;
+    }
+    .modal-close-btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #2563eb, #0284c7);
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* Kontrol Sentuh Khusus Mode WASD (Mobile/Touch) */
+    #touch-controls {
+      position: fixed;
+      bottom: 18px;
+      left: 16px;
+      right: 16px;
+      z-index: 42;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+    body.play-mode #touch-controls.touch-visible {
+      display: flex;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 46px);
+      gap: 6px;
+      pointer-events: auto;
+    }
+    .touch-key {
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      touch-action: none;
+    }
+    .touch-key:active, .touch-key.pressed {
+      background: rgba(56, 189, 248, 0.65);
+    }
+    .touch-jump {
+      pointer-events: auto;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 2px solid rgba(34, 197, 94, 0.7);
+      background: rgba(22, 163, 74, 0.72);
+      color: #fff;
+      font-family: inherit;
+      font-weight: 800;
+      font-size: 12px;
+      backdrop-filter: blur(8px);
+      user-select: none;
+      touch-action: none;
+    }
+
+    /* Hint Scroll Awal Mini (Hilang setelah mulai scroll) */
+    #scroll-hint {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 35;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(8px);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #e2e8f0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    #scroll-hint.hidden {
+      opacity: 0;
+    }
+
+    @media (max-width: 768px) {
+      #telemetry-pill {
+        top: 8px;
+        left: 8px;
+        padding: 5px 9px;
+        gap: 6px;
+        font-size: 11px;
+      }
+      #tele-phase {
+        max-width: 110px;
+      }
+      #control-pill {
+        top: 42px;
+        right: 8px;
+        left: 8px;
+        justify-content: center;
+        border-radius: 14px;
+      }
+      #studio-drawer {
+        top: 90px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Progress Bar Tipis 3px -->
+  <div id="progress-track">
+    <div id="progress-fill"></div>
+  </div>
+
+  <!-- HUD Telemetri Super Mini -->
+  <div id="telemetry-pill" aria-label="Telemetri Pendakian">
+    <span class="tele-badge"><span class="tele-dot"></span>DERMAWAN • DUNIA 3D</span>
+    <span class="tele-sep"></span>
+    <span id="tele-alt">450 MDPL</span>
+    <span class="tele-sep"></span>
+    <span id="tele-phase">Basecamp • Dunia Dermawan</span>
+  </div>
+
+  <!-- Pill Kontrol Ringkas -->
+  <div id="control-pill" role="toolbar" aria-label="Kontrol 3D">
+    <select id="cam-select" class="pill-select" title="Pilih Sudut Kamera">
+      <option value="action">Action Cam</option>
+      <option value="hero">Hero Cam</option>
+      <option value="overview">Overview</option>
+      <option value="orbit">Orbit 360°</option>
+    </select>
+    <button id="btn-autoscroll" class="pill-btn" title="Putar/Jeda Auto-Scroll">▶ Auto-Scroll</button>
+    <button id="btn-playmode" class="pill-btn" title="Beralih ke Mode Eksplorasi WASD">🎮 Mainkan (WASD)</button>
+    <button id="btn-studio" class="pill-btn" title="Buka Pengaturan Studio">⚙ Studio</button>
+  </div>
+
+  <!-- Drawer Pengaturan Studio Modular -->
+  <aside id="studio-drawer" aria-label="Studio Gunung Dermawan">
+    <div class="studio-header">
+      <span class="studio-title">STUDIO DUNIA 3D</span>
+      <button id="btn-close-studio" class="studio-close" aria-label="Tutup Studio">&times;</button>
+    </div>
+
+    <div class="studio-section">
+      <span class="studio-label">Cuaca & Pencahayaan</span>
+      <div class="studio-grid" id="lighting-group">
+        <button class="chip-btn selected" data-val="daylight">Daylight</button>
+        <button class="chip-btn" data-val="sunset">Golden Sunset</button>
+        <button class="chip-btn" data-val="cyber">Cyber Night</button>
+      </div>
+    </div>
+
+    <div class="studio-section">
+      <span class="studio-label">Kostum Roblox</span>
+      <div class="studio-grid" id="outfit-group">
+        <button class="chip-btn selected" data-val="pro">Pendaki Pro</button>
+        <button class="chip-btn" data-val="noob">Classic Noob</button>
+        <button class="chip-btn" data-val="cyber">Cyber Blox</button>
+      </div>
+    </div>
+
+    <div class="studio-section">
+      <span class="studio-label">Aksesori Kepala (Headgear)</span>
+      <div class="studio-grid cols-2" id="headgear-group">
+        <button class="chip-btn selected" data-val="helmet">Helm Panjat</button>
+        <button class="chip-btn" data-val="explorer">Topi Explorer</button>
+        <button class="chip-btn" data-val="visor">Visor</button>
+        <button class="chip-btn" data-val="headband">Headband</button>
+      </div>
+    </div>
+
+    <div class="studio-section" style="margin-bottom:0;">
+      <span class="studio-label">Simulasi Fisika Gunung</span>
+      <button id="btn-spawn-boulder" class="boulder-action-btn">
+        🪨 Jatuhkan Batu Fisika
+      </button>
+    </div>
+  </aside>
+
+  <!-- Hint Scroll Awal -->
+  <div id="scroll-hint">Scroll ke bawah untuk mendaki • Klik Papan 3D untuk membaca</div>
+
+  <!-- Toast Status -->
+  <div id="toast-msg"></div>
+
+  <!-- Modal Pembacaan Papan 3D -->
+  <div id="board-modal-backdrop" role="dialog" aria-modal="true">
+    <div id="board-modal-card">
+      <div class="modal-meta">
+        <span id="modal-tag" class="modal-tag">PAPAN PENGUMUMAN</span>
+        <span id="modal-elev" class="modal-elev">450 MDPL</span>
+      </div>
+      <h2 id="modal-title">Judul Papan</h2>
+      <p id="modal-text" class="modal-text"></p>
+      <ul id="modal-body"></ul>
+      <a id="modal-link" class="modal-link" href="#" target="_blank" rel="noopener">Buka</a>
+      <button id="modal-close" class="modal-close-btn">Tutup Papan</button>
+    </div>
+  </div>
+
+  <!-- Kontrol Sentuh Mode WASD -->
+  <div id="touch-controls">
+    <div class="dpad">
+      <div></div>
+      <button class="touch-key" data-key="KeyW">▲</button>
+      <div></div>
+      <button class="touch-key" data-key="KeyA">◀</button>
+      <button class="touch-key" data-key="KeyS">▼</button>
+      <button class="touch-key" data-key="KeyD">▶</button>
+    </div>
+    <button class="touch-jump" data-key="Space">LOMPAT</button>
+  </div>
+
+  <!-- Canvas Fixed Full-Screen -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Kontainer Scroll Tak Terlihat (750vh) -->
+  <div id="scroll-spacer"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    /* =========================================================================
+       1. KONFIGURASI TEMA MODULAR (THEME_CONFIG) & STATE ENGINE
+       ========================================================================= */
+    const THEME_CONFIG = {
+      lighting: 'daylight',   // 'daylight' | 'sunset' | 'cyber'
+      outfit: 'pro',          // 'pro' | 'noob' | 'cyber'
+      headgear: 'helmet',     // 'helmet' | 'explorer' | 'visor' | 'headband'
+      cameraMode: 'action',   // 'action' | 'hero' | 'overview' | 'orbit'
+      autoScroll: false,
+      playMode: false
+    };
+
+    const LIGHTING_PRESETS = {
+      daylight: {
+        skyTop: '#2563eb',
+        skyMid: '#7dd3fc',
+        skyBot: '#e0f2fe',
+        fogColor: 0xbae6fd,
+        fogDensity: 0.0036,
+        sunColor: 0xfff8e7,
+        sunIntensity: 2.35,
+        sunPos: new THREE.Vector3(75, 115, 65),
+        hemiSky: 0x93c5fd,
+        hemiGround: 0x3f6212,
+        hemiIntensity: 0.95,
+        rimColor: 0x38bdf8,
+        rimIntensity: 0.45,
+        exposure: 1.05
+      },
+      sunset: {
+        skyTop: '#1e1b4b',
+        skyMid: '#c2410c',
+        skyBot: '#fdba74',
+        fogColor: 0xfb923c,
+        fogDensity: 0.0044,
+        sunColor: 0xff9e44,
+        sunIntensity: 2.6,
+        sunPos: new THREE.Vector3(-95, 42, -55),
+        hemiSky: 0xfdba74,
+        hemiGround: 0x451a03,
+        hemiIntensity: 0.85,
+        rimColor: 0xf43f5e,
+        rimIntensity: 0.8,
+        exposure: 1.08
+      },
+      cyber: {
+        skyTop: '#020617',
+        skyMid: '#1e1b4b',
+        skyBot: '#312e81',
+        fogColor: 0x0f172a,
+        fogDensity: 0.0052,
+        sunColor: 0x38bdf8,
+        sunIntensity: 1.55,
+        sunPos: new THREE.Vector3(45, 95, -75),
+        hemiSky: 0x818cf8,
+        hemiGround: 0x0f172a,
+        hemiIntensity: 0.72,
+        rimColor: 0xe879f9,
+        rimIntensity: 1.35,
+        exposure: 1.15
+      }
+    };
+
+    const OUTFIT_PRESETS = {
+      pro: {
+        head: 0xfcd34d,
+        torso: 0xe11d48,
+        torsoAccent: 0xfef08a,
+        arms: 0x1e293b,
+        hands: 0xfcd34d,
+        legs: 0x334155,
+        boots: 0x78350f,
+        pack: 0x0284c7,
+        label: 'PRO'
+      },
+      noob: {
+        head: 0xfacc15,
+        torso: 0x2563eb,
+        torsoAccent: 0x93c5fd,
+        arms: 0xfacc15,
+        hands: 0xfacc15,
+        legs: 0x65a30d,
+        boots: 0x4d7c0f,
+        pack: 0xd97706,
+        label: 'NOOB'
+      },
+      cyber: {
+        head: 0xe2e8f0,
+        torso: 0x0f172a,
+        torsoAccent: 0x22d3ee,
+        arms: 0x312e81,
+        hands: 0x38bdf8,
+        legs: 0x1e1b4b,
+        boots: 0xd946ef,
+        pack: 0x7c3aed,
+        label: 'CYBER'
+      }
+    };
+
+    // Konstanta Dunia Gunung Dermawan
+    const WORLD_SIZE = 280;
+    const PEAK_X = 0;
+    const PEAK_Z = -10;
+    const PEAK_HEIGHT = 68;
+    const SOCKET_POS = new THREE.Vector3(0, PEAK_HEIGHT, -10);
+
+    // Koordinat Jembatan Gantung Pos 1 (melintasi jurang timur)
+    const BRIDGE_START = new THREE.Vector3(49.1, 20.4, 16.8);
+    const BRIDGE_END = new THREE.Vector3(55.9, 20.4, -7.2);
+    const BRIDGE_MID = new THREE.Vector3().addVectors(BRIDGE_START, BRIDGE_END).multiplyScalar(0.5);
+    const BRIDGE_DIR = new THREE.Vector3().subVectors(BRIDGE_END, BRIDGE_START).normalize();
+    const BRIDGE_LEN = BRIDGE_START.distanceTo(BRIDGE_END);
+    const BRIDGE_WIDTH = 4.6;
+
+    // State Scroll & Timeline
+    let targetProgress = 0;
+    let smoothProgress = 0;
+    let totalTime = 0;
+    let lastTimestamp = 0;
+    let fireworksTriggered = false;
+
+    // Input WASD Mode
+    const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false, ShiftLeft: false, ShiftRight: false };
+    const playerPhysics = {
+      pos: new THREE.Vector3(0, 0, 81),
+      vel: new THREE.Vector3(0, 0, 0),
+      yaw: Math.PI, // menghadap utara (-Z) menuju gunung
+      grounded: true,
+      coyoteTimer: 0,
+      knockbackTimer: 0,
+      stridePhase: 0,
+      climbing: false
+    };
+
+    // Daftar Objek Interaktif & Simulasi
+    const clickableSignMeshes = [];
+    const physicsBoulders = [];
+    const physicsCrates = [];
+    const particleSystems = [];
+    const clouds = [];
+    const climbingHolds = [];
+    let bridgePlanks = [];
+    let flagClothGeo = null;
+    let flagClothBasePos = null;
+    let summitFlagGroup = null;
+    let campfireEmbers = null;
+    let campfireLight = null;
+    let skyDomeMat = null;
+
+    /* =========================================================================
+       2. FUNGSI TOPOGRAFI ANALITIS GUNUNG GUNUNG DERMAWAN
+       ========================================================================= */
+    function smoothstep(edge0, edge1, x) {
+      const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+      return t * t * (3 - 2 * t);
+    }
+
+    /**
+     * Menghitung tinggi terrain alami Gunung Dermawan pada koordinat (x, z).
+     * Memiliki dataran datar Basecamp, lereng multi-bioma, jurang di bawah
+     * Jembatan Gantung, dinding tebing curam Pos 2, dataran Puncak 68m,
+     * serta cekungan depresi tepat di bawah soket bendera puncak.
+     */
+    function getTerrainHeight(x, z) {
+      const dx = x - PEAK_X;
+      const dz = z - PEAK_Z;
+      const r = Math.hypot(dx, dz);
+
+      // Profil dasar gunung: datar di puncak (r <= 10.5) & datar di Basecamp (r >= 82)
+      const s = smoothstep(10.5, 82.0, r);
+      let h = PEAK_HEIGHT * (1.0 - s);
+
+      // Detail bukit & punggungan gunung (hanya di antara puncak dan lembah basecamp)
+      const midWeight = smoothstep(11.5, 20.0, r) * (1.0 - smoothstep(72.0, 84.0, r));
+      if (midWeight > 0.001) {
+        const angle = Math.atan2(dz, dx);
+        const ridges =
+          Math.sin(angle * 5.0 + r * 0.06) * 2.1 +
+          Math.cos(angle * 3.0 - r * 0.09) * 1.8 +
+          Math.sin(x * 0.09) * Math.cos(z * 0.09) * 1.4;
+        h += ridges * midWeight;
+
+        // Teras berundak tipis khas Roblox terrain
+        const terrace = Math.sin(h * 0.45) * 0.35;
+        h += terrace * midWeight;
+      }
+
+      // Ukiran jurang dramatis tepat di bawah Jembatan Gantung Pos 1
+      const toP = { x: x - BRIDGE_START.x, z: z - BRIDGE_START.z };
+      const proj = toP.x * BRIDGE_DIR.x + toP.z * BRIDGE_DIR.z;
+      if (proj > 2.5 && proj < BRIDGE_LEN - 2.5) {
+        const perp = Math.abs(toP.x * (-BRIDGE_DIR.z) + toP.z * BRIDGE_DIR.x);
+        const alongCenter = 1.0 - Math.abs((proj / BRIDGE_LEN) - 0.5) * 2.0;
+        const ravineDepth = 12.5 * smoothstep(0.05, 0.45, alongCenter) * (1.0 - smoothstep(4.0, 14.5, perp));
+        h -= ravineDepth;
+      }
+
+      // Sedikit perataan di area Basecamp selatan (z > 68) agar pondok/tenda/papan duduk rapi
+      const baseFlat = smoothstep(66, 75, z) * (1.0 - smoothstep(32, 48, Math.abs(x)));
+      h *= (1.0 - baseFlat);
+
+      // Cekungan/depresi vertex terrain tepat di bawah lubang soket bendera puncak
+      // agar tidak ada bidang terrain datar yang menutupi interior lubang soket!
+      const distSocket = Math.hypot(x - SOCKET_POS.x, z - SOCKET_POS.z);
+      if (distSocket < 3.4) {
+        const dip = 2.6 * (1.0 - smoothstep(0.6, 3.4, distSocket));
+        h -= dip;
+      }
+
+      return h;
+    }
+
+    /**
+     * Menghitung normal permukaan gunung via finite difference.
+     */
+    function getTerrainNormal(x, z, target = new THREE.Vector3()) {
+      const eps = 0.6;
+      const hL = getTerrainHeight(x - eps, z);
+      const hR = getTerrainHeight(x + eps, z);
+      const hD = getTerrainHeight(x, z - eps);
+      const hU = getTerrainHeight(x, z + eps);
+      return target.set(hL - hR, 2 * eps, hD - hU).normalize();
+    }
+
+    /**
+     * Tinggi permukaan yang bisa dipijak (termasuk dek Jembatan Gantung Pos 1 & platform puncak).
+     */
+    function getWalkableSurface(x, z, timeSec = totalTime) {
+      let y = getTerrainHeight(x, z);
+      let onBridge = false;
+
+      // Cek apakah karakter berada di atas dek Jembatan Gantung
+      const dx = x - BRIDGE_START.x;
+      const dz = z - BRIDGE_START.z;
+      const proj = dx * BRIDGE_DIR.x + dz * BRIDGE_DIR.z;
+      if (proj >= -1.0 && proj <= BRIDGE_LEN + 1.0) {
+        const perp = Math.abs(dx * (-BRIDGE_DIR.z) + dz * BRIDGE_DIR.x);
+        if (perp <= BRIDGE_WIDTH * 0.56) {
+          const u = Math.max(0, Math.min(1, proj / BRIDGE_LEN));
+          const sag = Math.sin(u * Math.PI) * 1.15;
+          const sway = Math.sin(timeSec * 2.3 + u * Math.PI) * 0.14 * Math.sin(u * Math.PI);
+          const bridgeY = THREE.MathUtils.lerp(BRIDGE_START.y, BRIDGE_END.y, u) - sag + sway + 0.22;
+          if (bridgeY > y) {
+            y = bridgeY;
+            onBridge = true;
+          }
+        }
+      }
+
+      // Platform cincin puncak di sekitar soket bendera (menjaga pijakan rata di y = PEAK_HEIGHT)
+      const dSock = Math.hypot(x - SOCKET_POS.x, z - SOCKET_POS.z);
+      if (dSock >= 0.6 && dSock <= 4.1) {
+        y = Math.max(y, PEAK_HEIGHT + 0.04);
+      }
+
+      return { y, onBridge };
+    }
+
+    /* =========================================================================
+       3. GENERATOR TEKSTUR PROCEDURAL ROBLOX STUDS & PAPAN (CANVAS 2D)
+       ========================================================================= */
+    function createRobloxStudTexture(baseHex, studLightHex, studDarkHex, repeatX = 1, repeatY = 1, noiseAmt = 0.06) {
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = baseHex;
+      ctx.fillRect(0, 0, size, size);
+
+      // Sedikit variasi tekstur mikro agar tidak terlalu steril
+      if (noiseAmt > 0) {
+        for (let i = 0; i < 420; i++) {
+          const nx = Math.random() * size;
+          const ny = Math.random() * size;
+          const ns = 2 + Math.random() * 6;
+          ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${noiseAmt})` : `rgba(0,0,0,${noiseAmt})`;
+          ctx.fillRect(nx, ny, ns, ns);
+        }
+      }
+
+      // Grid 4x4 Roblox Studs ikonik
+      const cells = 4;
+      const step = size / cells;
+      for (let gx = 0; gx < cells; gx++) {
+        for (let gy = 0; gy < cells; gy++) {
+          const cx = gx * step + step * 0.5;
+          const cy = gy * step + step * 0.5;
+          const rad = step * 0.28;
+
+          // Garis grid brick tipis
+          ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(gx * step + 1, gy * step + 1, step - 2, step - 2);
+
+          // Bayangan stud bawah-kanan
+          ctx.beginPath();
+          ctx.arc(cx + 2.5, cy + 3, rad, 0, Math.PI * 2);
+          ctx.fillStyle = studDarkHex;
+          ctx.fill();
+
+          // Bagian atas stud
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.fillStyle = baseHex;
+          ctx.fill();
+
+          // Highlight bevel atas-kiri
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, Math.PI * 0.9, Math.PI * 1.85);
+          ctx.strokeStyle = studLightHex;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Outline stud
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    function createRobloxFaceTexture(style = 'pro') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      const bg = style === 'cyber' ? '#e2e8f0' : (style === 'noob' ? '#facc15' : '#fcd34d');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Pipi merona halus
+      ctx.fillStyle = style === 'cyber' ? 'rgba(56,189,248,0.22)' : 'rgba(244,63,94,0.18)';
+      ctx.beginPath(); ctx.ellipse(150, 295, 36, 20, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(362, 295, 36, 20, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Mata klasik Roblox bersemangat
+      const drawEye = (x) => {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(x, 222, 24, 34, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Kilau mata
+        ctx.fillStyle = style === 'cyber' ? '#38bdf8' : '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x - 7, 208, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + 8, 232, 4, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      drawEye(184);
+      drawEye(328);
+
+      // Alis penuh tekad
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 12;
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(150, 165); ctx.lineTo(212, 175); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(362, 165); ctx.lineTo(300, 175); ctx.stroke();
+
+      // Senyum lebar khas Roblox
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 16;
+      ctx.beginPath();
+      ctx.arc(256, 275, 76, 0.18 * Math.PI, 0.82 * Math.PI);
+      ctx.stroke();
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createTorsoTexture(presetKey) {
+      const p = OUTFIT_PRESETS[presetKey] || OUTFIT_PRESETS.pro;
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#' + p.torso.toString(16).padStart(6, '0');
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Tali harness pendaki
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(92, 0, 46, 512);
+      ctx.fillRect(374, 0, 46, 512);
+      ctx.fillRect(0, 390, 512, 52);
+
+      // Gesper & aksen dada
+      ctx.fillStyle = '#' + p.torsoAccent.toString(16).padStart(6, '0');
+      ctx.fillRect(216, 396, 80, 40);
+      ctx.fillRect(160, 118, 192, 110);
+
+      // Lencana Gunung Dermawan
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '800 44px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('DERMAWAN', 256, 170);
+      ctx.font = '800 32px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(p.label, 256, 210);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    /**
+     * Membuat tekstur Canvas resolusi tinggi untuk Papan Pengumuman 3D.
+     */
+    function createNoticeBoardTexture(title, subtitle, lines, themeColor = '#f59e0b', badgeText = 'INFO RESMI') {
+      const w = 1024;
+      const h = 640;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      // Latar papan gabus/kayu hangat dengan border bersih
+      ctx.fillStyle = '#fef9c3';
+      ctx.fillRect(0, 0, w, h);
+
+      // Tekstur garis papan halus
+      ctx.fillStyle = 'rgba(180, 83, 9, 0.06)';
+      for (let y = 0; y < h; y += 32) {
+        ctx.fillRect(0, y, w, 2);
+      }
+
+      // Header berwarna tegas
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(24, 24, w - 48, 134);
+      ctx.fillStyle = themeColor;
+      ctx.fillRect(24, 152, w - 48, 12);
+
+      // Lencana kanan atas
+      ctx.fillStyle = themeColor;
+      ctx.fillRect(w - 256, 44, 208, 42);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(badgeText, w - 152, 73);
+
+      // Judul utama
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 38px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(title, 52, 86);
+
+      // Subjudul
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '600 24px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(subtitle, 52, 130);
+
+      // Daftar baris pengumuman dengan kotak rapi
+      let currY = 196;
+      lines.forEach((line, idx) => {
+        ctx.fillStyle = idx % 2 === 0 ? '#ffffff' : '#fef3c7';
+        ctx.fillRect(42, currY, w - 84, 82);
+        ctx.fillStyle = themeColor;
+        ctx.fillRect(42, currY, 14, 82);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 29px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(line, 76, currY + 51);
+        currY += 98;
+      });
+
+      // Catatan klik di footer papan
+      ctx.fillStyle = '#475569';
+      ctx.font = '700 20px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('Klik papan ini untuk membaca tampilan penuh', w - 46, h - 22);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    /**
+     * Membuat tekstur Canvas tajam untuk Papan Petunjuk Arah (Directional Signpost).
+     */
+    function createSignpostTexture(text, bgHex = '#fef08a', textHex = '#0f172a', borderHex = '#854d0e') {
+      const w = 640;
+      const h = 180;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = bgHex;
+      ctx.fillRect(0, 0, w, h);
+
+      // Bingkai kayu tegas
+      ctx.strokeStyle = borderHex;
+      ctx.lineWidth = 18;
+      ctx.strokeRect(9, 9, w - 18, h - 18);
+
+      // Teks tajam
+      ctx.fillStyle = textHex;
+      ctx.font = '800 44px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, w / 2, h / 2 + 2);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    function createFlagTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 320;
+      const ctx = canvas.getContext('2d');
+
+      // Bendera Merah Putih + emblem Gunung Dermawan Emas
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(0, 0, 512, 160);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 160, 512, 160);
+
+      // Emblem gunung di tengah
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(190, 225);
+      ctx.lineTo(256, 95);
+      ctx.lineTo(322, 225);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      ctx.fillStyle = '#facc15';
+      ctx.font = '800 32px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('2.850 MDPL', 256, 282);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    /* =========================================================================
+       4. INISIALISASI SCENE, RENDERER, KAMERA & PENCAHAYAAN
+       ========================================================================= */
+    const canvas = document.getElementById('webgl-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xbae6fd, 0.0036);
+
+    const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.25, 650);
+    camera.position.set(12, 7.5, 93);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.enableZoom = false; // agar scroll halaman mulus saat mode scrollytelling
+    controls.maxPolarAngle = Math.PI * 0.485;
+    controls.minDistance = 5;
+    controls.maxDistance = 210;
+    controls.enabled = false;
+
+    // Sky Dome Gradasi Atmosferik
+    function buildSkyDome() {
+      const skyGeo = new THREE.SphereGeometry(320, 32, 20);
+      skyDomeMat = new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          topColor: { value: new THREE.Color('#2563eb') },
+          midColor: { value: new THREE.Color('#7dd3fc') },
+          botColor: { value: new THREE.Color('#e0f2fe') }
+        },
+        vertexShader: `
+          varying vec3 vWorldPosition;
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 topColor;
+          uniform vec3 midColor;
+          uniform vec3 botColor;
+          varying vec3 vWorldPosition;
+          void main() {
+            float h = normalize(vWorldPosition).y;
+            vec3 col = mix(botColor, midColor, smoothstep(-0.08, 0.22, h));
+            col = mix(col, topColor, smoothstep(0.22, 0.78, h));
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `
+      });
+      const sky = new THREE.Mesh(skyGeo, skyDomeMat);
+      scene.add(sky);
+    }
+    buildSkyDome();
+
+    // Cahaya Matahari + Hemisphere + Rim Light
+    const hemiLight = new THREE.HemisphereLight(0x93c5fd, 0x3f6212, 0.95);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff8e7, 2.35);
+    sunLight.position.set(75, 115, 65);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 320;
+    const dShadow = 118;
+    sunLight.shadow.camera.left = -dShadow;
+    sunLight.shadow.camera.right = dShadow;
+    sunLight.shadow.camera.top = dShadow;
+    sunLight.shadow.camera.bottom = -dShadow;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+    rimLight.position.set(-80, 55, -80);
+    scene.add(rimLight);
+
+    function applyLightingPreset(key) {
+      const p = LIGHTING_PRESETS[key] || LIGHTING_PRESETS.daylight;
+      THEME_CONFIG.lighting = key;
+      skyDomeMat.uniforms.topColor.value.set(p.skyTop);
+      skyDomeMat.uniforms.midColor.value.set(p.skyMid);
+      skyDomeMat.uniforms.botColor.value.set(p.skyBot);
+      scene.fog.color.setHex(p.fogColor);
+      scene.fog.density = p.fogDensity;
+      sunLight.color.setHex(p.sunColor);
+      sunLight.intensity = p.sunIntensity;
+      sunLight.position.copy(p.sunPos);
+      hemiLight.color.setHex(p.hemiSky);
+      hemiLight.groundColor.setHex(p.hemiGround);
+      hemiLight.intensity = p.hemiIntensity;
+      rimLight.color.setHex(p.rimColor);
+      rimLight.intensity = p.rimIntensity;
+      renderer.toneMappingExposure = p.exposure;
+    }
+
+    /* =========================================================================
+       5. MEMBANGUN MAP DUNIA ROBLOX LUAS (280x280) & MULTI-BIOMA
+       ========================================================================= */
+    const studTerrainTex = createRobloxStudTexture('#ffffff', 'rgba(255,255,255,0.45)', 'rgba(0,0,0,0.22)', 72, 72, 0.03);
+    const studWoodTex = createRobloxStudTexture('#92400e', 'rgba(255,220,170,0.35)', 'rgba(0,0,0,0.28)', 2, 2, 0.05);
+    const studRockTex = createRobloxStudTexture('#64748b', 'rgba(255,255,255,0.25)', 'rgba(0,0,0,0.3)', 2, 2, 0.08);
+    const studCrateTex = createRobloxStudTexture('#b45309', 'rgba(254,240,138,0.4)', 'rgba(0,0,0,0.32)', 1, 1, 0.06);
+    const studSnowTex = createRobloxStudTexture('#f1f5f9', 'rgba(255,255,255,0.75)', 'rgba(148,163,184,0.32)', 4, 4, 0.02);
+
+    function buildTerrainAndBaseplate() {
+      const segs = 156;
+      const geo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, segs, segs);
+      geo.rotateX(-Math.PI / 2);
+
+      const pos = geo.attributes.position;
+      const colors = new Float32Array(pos.count * 3);
+
+      const colGrass = new THREE.Color(0x4ade80);
+      const colForest = new THREE.Color(0x22c55e);
+      const colDirt = new THREE.Color(0xa16207);
+      const colRock = new THREE.Color(0x64748b);
+      const colDarkRock = new THREE.Color(0x475569);
+      const colSnow = new THREE.Color(0xf8fafc);
+      const tmp = new THREE.Color();
+
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const y = getTerrainHeight(x, z);
+        pos.setY(i, y);
+
+        // Pewarnaan bioma halus berdasarkan ketinggian & kemiringan
+        if (y < 6.5) {
+          tmp.copy(colGrass).lerp(colForest, smoothstep(0.5, 6.5, y));
+        } else if (y < 24.0) {
+          tmp.copy(colForest).lerp(colDirt, smoothstep(8.0, 22.0, y) * 0.65);
+        } else if (y < 51.0) {
+          tmp.copy(colDirt).lerp(colRock, smoothstep(23.0, 34.0, y));
+          if (y > 35 && y < 48) {
+            tmp.lerp(colDarkRock, 0.42);
+          }
+        } else {
+          tmp.copy(colRock).lerp(colSnow, smoothstep(50.5, 58.0, y));
+        }
+
+        // Jalur pendakian di Basecamp terlihat seperti jalan tanah terang
+        if (z > 50 && z < 84 && Math.abs(x - (84 - z) * 0.55) < 4.5 && y < 8) {
+          tmp.lerp(colDirt, 0.65);
+        }
+
+        colors[i * 3] = tmp.r;
+        colors[i * 3 + 1] = tmp.g;
+        colors[i * 3 + 2] = tmp.b;
+      }
+
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({
+        map: studTerrainTex,
+        vertexColors: true,
+        roughness: 0.88,
+        metalness: 0.04
+      });
+
+      const terrainMesh = new THREE.Mesh(geo, mat);
+      terrainMesh.receiveShadow = true;
+      terrainMesh.castShadow = true;
+      scene.add(terrainMesh);
+
+      // Horizon Baseplate Roblox Luas di sekeliling map agar tidak pernah terasa "terpotong"
+      const outerBaseTex = createRobloxStudTexture('#22c55e', 'rgba(255,255,255,0.28)', 'rgba(0,0,0,0.18)', 40, 40, 0.02);
+      const outerPlate = new THREE.Mesh(
+        new THREE.PlaneGeometry(660, 660),
+        new THREE.MeshStandardMaterial({ map: outerBaseTex, roughness: 0.92 })
+      );
+      outerPlate.rotation.x = -Math.PI / 2;
+      outerPlate.position.y = -0.35;
+      outerPlate.receiveShadow = true;
+      scene.add(outerPlate);
+    }
+
+    /**
+     * Barisan Pegunungan Jauh & Awan Kubus Roblox di Horizon.
+     */
+    function buildDistantHorizonAndClouds() {
+      const mtnMatRock = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.92, flatShading: true });
+      const mtnMatSnow = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.78, flatShading: true });
+
+      for (let i = 0; i < 24; i++) {
+        const ang = (i / 24) * Math.PI * 2;
+        const dist = 165 + (i % 3) * 28;
+        const h = 42 + (i * 19 % 46);
+        const rad = 28 + (i * 11 % 22);
+
+        const grp = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 5), mtnMatRock);
+        base.position.y = h * 0.5 - 2;
+        grp.add(base);
+
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.42, h * 0.42, 5), mtnMatSnow);
+        cap.position.y = h * 0.79 - 2;
+        grp.add(cap);
+
+        grp.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist - 10);
+        grp.rotation.y = i * 1.1;
+        scene.add(grp);
+      }
+
+      // Awan Kubus Blocky khas Roblox
+      const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
+      for (let i = 0; i < 26; i++) {
+        const cloud = new THREE.Group();
+        const blocks = 3 + (i % 3);
+        for (let b = 0; b < blocks; b++) {
+          const w = 10 + ((i + b) % 4) * 4;
+          const hh = 3.5 + (b % 2) * 2.2;
+          const d = 8 + ((i * 2 + b) % 3) * 3.5;
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), cloudMat);
+          mesh.position.set((b - 1) * 6.5, (b % 2) * 1.6, ((b % 3) - 1) * 3.2);
+          cloud.add(mesh);
+        }
+        cloud.position.set(
+          (Math.random() - 0.5) * 340,
+          86 + Math.random() * 32,
+          (Math.random() - 0.5) * 340
+        );
+        cloud.userData.speed = 0.8 + Math.random() * 1.4;
+        scene.add(cloud);
+        clouds.push(cloud);
+      }
+    }
+
+    /**
+     * Membangun Pohon Pinus Kotak/Blocky khas Roblox.
+     */
+    function createBlockyPineTree(scale = 1) {
+      const tree = new THREE.Group();
+      const trunkMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0x78350f, roughness: 0.9 });
+      const leafMat1 = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 });
+      const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.85 });
+
+      const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.1, 3.8, 1.1), trunkMat);
+      trunk.position.y = 1.9;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      tree.add(trunk);
+
+      const tiers = [
+        { s: 4.4, h: 2.2, y: 4.2, m: leafMat1 },
+        { s: 3.4, h: 2.1, y: 6.1, m: leafMat2 },
+        { s: 2.3, h: 1.9, y: 7.9, m: leafMat1 },
+        { s: 1.2, h: 1.5, y: 9.4, m: leafMat2 }
+      ];
+      tiers.forEach(t => {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(t.s, t.h, t.s), t.m);
+        box.position.y = t.y;
+        box.castShadow = true;
+        box.receiveShadow = true;
+        tree.add(box);
+      });
+
+      tree.scale.setScalar(scale);
+      return tree;
+    }
+
+    /**
+     * Basecamp Lembah Blox (0m): Pondok Kayu, Tenda, Api Unggun + Bara, Gerbang Start, Hutan Pinus.
+     */
+    function buildBasecamp() {
+      const grp = new THREE.Group();
+
+      // 1. Pondok Kayu Roblox (Kiri Basecamp)
+      const cabin = new THREE.Group();
+      const wallMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0xb45309, roughness: 0.82 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.78 });
+      const winMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 0.45 });
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5.2, 6.8), wallMat);
+      body.position.y = 2.6;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      cabin.add(body);
+
+      // Atap prisma blocky
+      const roof1 = new THREE.Mesh(new THREE.BoxGeometry(9.6, 1.1, 7.8), roofMat);
+      roof1.position.y = 5.6;
+      roof1.castShadow = true;
+      cabin.add(roof1);
+      const roof2 = new THREE.Mesh(new THREE.BoxGeometry(7.2, 1.2, 5.8), roofMat);
+      roof2.position.y = 6.6;
+      roof2.castShadow = true;
+      cabin.add(roof2);
+
+      // Pintu & Jendela hangat
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.2, 0.25), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+      door.position.set(0, 1.6, 3.42);
+      cabin.add(door);
+      [-2.6, 2.6].forEach(wx => {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.25), winMat);
+        win.position.set(wx, 2.8, 3.42);
+        cabin.add(win);
+      });
+
+      const cabX = -15.5, cabZ = 82.0;
+      cabin.position.set(cabX, getTerrainHeight(cabX, cabZ), cabZ);
+      cabin.rotation.y = 0.32;
+      grp.add(cabin);
+
+      // 2. Tenda Berkemah Roblox (Kanan Basecamp)
+      const tent = new THREE.Group();
+      const tentGeo = new THREE.ConeGeometry(3.4, 3.6, 4);
+      const tentMesh = new THREE.Mesh(tentGeo, new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.75 }));
+      tentMesh.position.y = 1.8;
+      tentMesh.rotation.y = Math.PI * 0.25;
+      tentMesh.castShadow = true;
+      tentMesh.receiveShadow = true;
+      tent.add(tentMesh);
+      const tentX = 15.5, tentZ = 85.0;
+      tent.position.set(tentX, getTerrainHeight(tentX, tentZ), tentZ);
+      grp.add(tent);
+
+      // 3. Api Unggun + Partikel Bara Naik
+      const fireX = 9.5, fireZ = 82.5;
+      const fireY = getTerrainHeight(fireX, fireZ);
+      const fireGrp = new THREE.Group();
+      fireGrp.position.set(fireX, fireY, fireZ);
+
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const st = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.45, 0.65), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+        st.position.set(Math.cos(a) * 1.1, 0.2, Math.sin(a) * 1.1);
+        st.rotation.y = a;
+        fireGrp.add(st);
+      }
+      for (let i = 0; i < 3; i++) {
+        const log = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.28, 0.28), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+        log.position.y = 0.22;
+        log.rotation.y = (i / 3) * Math.PI;
+        fireGrp.add(log);
+      }
+      const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.55, 1.35, 5),
+        new THREE.MeshBasicMaterial({ color: 0xf97316 })
+      );
+      flame.position.y = 0.78;
+      flame.name = 'campfireFlame';
+      fireGrp.add(flame);
+
+      campfireLight = new THREE.PointLight(0xf97316, 4.5, 18);
+      campfireLight.position.set(0, 1.6, 0);
+      fireGrp.add(campfireLight);
+      grp.add(fireGrp);
+
+      // Partikel bara api unggun naik ke udara
+      const emberCount = 42;
+      const emberGeo = new THREE.BufferGeometry();
+      const emberPos = new Float32Array(emberCount * 3);
+      const emberData = [];
+      for (let i = 0; i < emberCount; i++) {
+        const ex = fireX + (Math.random() - 0.5) * 0.9;
+        const ey = fireY + 0.5 + Math.random() * 4.5;
+        const ez = fireZ + (Math.random() - 0.5) * 0.9;
+        emberPos[i * 3] = ex;
+        emberPos[i * 3 + 1] = ey;
+        emberPos[i * 3 + 2] = ez;
+        emberData.push({
+          originX: fireX,
+          originY: fireY + 0.5,
+          originZ: fireZ,
+          speed: 1.2 + Math.random() * 1.8,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+      emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPos, 3));
+      campfireEmbers = new THREE.Points(
+        emberGeo,
+        new THREE.PointsMaterial({ color: 0xfbbf24, size: 0.24, transparent: true, opacity: 0.9 })
+      );
+      campfireEmbers.userData.emberData = emberData;
+      scene.add(campfireEmbers);
+
+      // 4. Gerbang Start Pendakian
+      const gate = new THREE.Group();
+      const postMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0x78350f, roughness: 0.85 });
+      [-3.4, 3.4].forEach(px => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.75, 6.2, 0.75), postMat);
+        post.position.set(px, 3.1, 0);
+        post.castShadow = true;
+        gate.add(post);
+      });
+      const bannerTex = createSignpostTexture('START PENDAKIAN GUNUNG DERMAWAN', '#1d4ed8', '#ffffff', '#facc15');
+      const banner = new THREE.Mesh(
+        new THREE.BoxGeometry(8.2, 1.55, 0.45),
+        [
+          postMat, postMat, postMat, postMat,
+          new THREE.MeshStandardMaterial({ map: bannerTex }),
+          new THREE.MeshStandardMaterial({ map: bannerTex })
+        ]
+      );
+      banner.position.set(0, 5.7, 0);
+      banner.castShadow = true;
+      gate.add(banner);
+      const gx = 9.0, gz = 71.0;
+      gate.position.set(gx, getTerrainHeight(gx, gz), gz);
+      gate.rotation.y = -0.58;
+      grp.add(gate);
+
+      // 5. Hutan Pohon Pinus Roblox di Basecamp & Kaki Gunung
+      const pineCoords = [
+        [-25, 86, 1.25], [-29, 75, 1.05], [-21, 66, 1.15], [-10, 92, 1.2],
+        [24, 90, 1.3], [29, 77, 1.1], [23, 64, 1.0], [34, 66, 1.2],
+        [44, 52, 1.1], [54, 42, 1.0], [64, 32, 1.15], [64, 18, 0.95],
+        [36, 42, 0.95], [22, 48, 0.92], [-18, 52, 1.05], [-38, 62, 1.25],
+        [-48, 45, 1.15], [-55, 15, 1.2], [-45, -45, 1.0], [62, -22, 1.0],
+        [48, -48, 1.05], [10, 95, 1.15], [-4, 96, 1.0], [38, 86, 1.25]
+      ];
+      pineCoords.forEach(([px, pz, sc]) => {
+        const py = getTerrainHeight(px, pz);
+        if (py < 28) {
+          const pine = createBlockyPineTree(sc);
+          pine.position.set(px, py - 0.15, pz);
+          pine.rotation.y = px * 0.4;
+          grp.add(pine);
+        }
+      });
+
+      scene.add(grp);
+    }
+
+    /**
+     * Pos 1: Jembatan Kayu Gantung Berayun + Bendera Checkpoint.
+     */
+    function buildPos1SuspensionBridge() {
+      const bridgeGrp = new THREE.Group();
+      const plankCount = 22;
+      const plankMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0xb45309, roughness: 0.86 });
+      const postMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0x78350f, roughness: 0.9 });
+      const ropeMat = new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.9 });
+
+      const bridgeAngle = Math.atan2(BRIDGE_DIR.x, BRIDGE_DIR.z);
+
+      // Tiang jangkar di kedua ujung jembatan
+      [BRIDGE_START, BRIDGE_END].forEach(endPt => {
+        [-BRIDGE_WIDTH * 0.52, BRIDGE_WIDTH * 0.52].forEach(side => {
+          const perpX = -BRIDGE_DIR.z * side;
+          const perpZ = BRIDGE_DIR.x * side;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.8, 0.55), postMat);
+          post.position.set(endPt.x + perpX, endPt.y + 1.5, endPt.z + perpZ);
+          post.castShadow = true;
+          bridgeGrp.add(post);
+        });
+      });
+
+      // Papan kayu jembatan yang akan berayun secara dinamis
+      bridgePlanks = [];
+      const plankStep = BRIDGE_LEN / plankCount;
+      for (let i = 0; i < plankCount; i++) {
+        const u = (i + 0.5) / plankCount;
+        const basePos = new THREE.Vector3().lerpVectors(BRIDGE_START, BRIDGE_END, u);
+        const sag = Math.sin(u * Math.PI) * 1.15;
+        basePos.y -= sag;
+
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_WIDTH, 0.34, plankStep * 0.84), plankMat);
+        plank.position.copy(basePos);
+        plank.rotation.y = bridgeAngle;
+        plank.castShadow = true;
+        plank.receiveShadow = true;
+        plank.userData = { basePos: basePos.clone(), u };
+        bridgeGrp.add(plank);
+        bridgePlanks.push(plank);
+      }
+
+      // Tali pegangan kiri & kanan (CatmullRomCurve3)
+      [-BRIDGE_WIDTH * 0.52, BRIDGE_WIDTH * 0.52].forEach(side => {
+        const pts = [];
+        for (let i = 0; i <= 16; i++) {
+          const u = i / 16;
+          const p = new THREE.Vector3().lerpVectors(BRIDGE_START, BRIDGE_END, u);
+          p.x += -BRIDGE_DIR.z * side;
+          p.z += BRIDGE_DIR.x * side;
+          p.y += 2.2 - Math.sin(u * Math.PI) * 1.45;
+          pts.push(p);
+        }
+        const ropeCurve = new THREE.CatmullRomCurve3(pts);
+        const ropeMesh = new THREE.Mesh(new THREE.TubeGeometry(ropeCurve, 24, 0.11, 6, false), ropeMat);
+        bridgeGrp.add(ropeMesh);
+      });
+
+      // Bendera Checkpoint Pos 1 di sisi awal jembatan
+      const cpX = 46.2, cpZ = 21.5;
+      const cpY = getTerrainHeight(cpX, cpZ);
+      const cpGrp = new THREE.Group();
+      const cpPole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 5.2, 8), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.6 }));
+      cpPole.position.y = 2.6;
+      cpGrp.add(cpPole);
+      const cpFlag = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 0.08), new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 0.25 }));
+      cpFlag.position.set(1.15, 4.5, 0);
+      cpGrp.add(cpFlag);
+      cpGrp.position.set(cpX, cpY, cpZ);
+      bridgeGrp.add(cpGrp);
+
+      scene.add(bridgeGrp);
+    }
+
+    /**
+     * Pos 2: Dinding Panjat Tebing Curam + Pegangan Panjat Warna-Warni (Climbing Holds).
+     */
+    function buildPos2ClimbingWall() {
+      const cliffGrp = new THREE.Group();
+      const slabMat = new THREE.MeshStandardMaterial({ map: studRockTex, color: 0x475569, roughness: 0.92 });
+      const holdColors = [0xef4444, 0xf59e0b, 0x3b82f6, 0x22c55e, 0xa855f7, 0xec4899];
+
+      // Jalur tebing curam dari (39.5, y=31, -30.5) mendaki ke (25.5, y=50.5, -24.0)
+      const cliffStart = new THREE.Vector3(39.5, getTerrainHeight(39.5, -30.5), -30.5);
+      const cliffEnd = new THREE.Vector3(24.5, getTerrainHeight(24.5, -23.5), -23.5);
+
+      for (let i = 0; i < 14; i++) {
+        const u = i / 13;
+        const p = new THREE.Vector3().lerpVectors(cliffStart, cliffEnd, u);
+        p.y = getTerrainHeight(p.x, p.z) + 0.35;
+
+        // Lempeng batu berundak
+        const slab = new THREE.Mesh(
+          new THREE.BoxGeometry(5.5 + (i % 3) * 0.9, 1.8, 3.2),
+          slabMat
+        );
+        slab.position.set(p.x, p.y - 0.85, p.z);
+        slab.rotation.y = 1.15;
+        slab.castShadow = true;
+        slab.receiveShadow = true;
+        cliffGrp.add(slab);
+
+        // Pegangan panjat warna-warni (kiri & kanan bergantian untuk IK)
+        const sideOffset = (i % 2 === 0 ? 1 : -1) * 0.85;
+        const holdPos = new THREE.Vector3(
+          p.x + Math.cos(1.15) * sideOffset,
+          p.y + 0.55,
+          p.z - Math.sin(1.15) * sideOffset
+        );
+        const hold = new THREE.Mesh(
+          new THREE.BoxGeometry(0.68, 0.36, 0.55),
+          new THREE.MeshStandardMaterial({
+            color: holdColors[i % holdColors.length],
+            roughness: 0.45,
+            emissive: holdColors[i % holdColors.length],
+            emissiveIntensity: 0.16
+          })
+        );
+        hold.position.copy(holdPos);
+        hold.rotation.y = 1.15;
+        hold.castShadow = true;
+        cliffGrp.add(hold);
+        climbingHolds.push(holdPos.clone());
+      }
+
+      scene.add(cliffGrp);
+    }
+
+    /**
+     * Puncak Gunung Dermawan (68m / 2.850 MDPL):
+     * - Lubang Soket Tancap Bendera yang BENAR-BENAR CEKUNG KE DALAM (Recessed Cutout Socket)
+     *   memakai RingGeometry + dinding silinder cekung tanpa terrain datar di atasnya!
+     * - Tugu Puncak 2.850 MDPL
+     * - Bendera Puncak dengan animasi gelombang angin (vertex wave)
+     */
+    function buildSummitAndRecessedSocket() {
+      const summitGrp = new THREE.Group();
+
+      // 1. Platform Puncak berlubang nyata (RingGeometry: innerRadius 0.52, outerRadius 4.2)
+      // Berada tepat di atas area depresi terrain sehingga lubang tengah benar-benar tembus ke dalam!
+      const platformGeo = new THREE.RingGeometry(0.52, 4.2, 48, 2);
+      platformGeo.rotateX(-Math.PI / 2);
+      const platformMat = new THREE.MeshStandardMaterial({
+        map: studSnowTex,
+        color: 0xf1f5f9,
+        roughness: 0.82
+      });
+      const platform = new THREE.Mesh(platformGeo, platformMat);
+      platform.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.04, SOCKET_POS.z);
+      platform.receiveShadow = true;
+      summitGrp.add(platform);
+
+      // Bingkai cincin logam chamfered di bibir lubang soket (RingGeometry)
+      const collarGeo = new THREE.RingGeometry(0.46, 0.88, 36);
+      collarGeo.rotateX(-Math.PI / 2);
+      const collarMat = new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        metalness: 0.65,
+        roughness: 0.3
+      });
+      const collar = new THREE.Mesh(collarGeo, collarMat);
+      collar.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.08, SOCKET_POS.z);
+      summitGrp.add(collar);
+
+      // Cincin luar bevel 3D (Torus tipis) di bibir lubang soket agar sudut 45° terlihat sangat tegas
+      const rimLip = new THREE.Mesh(
+        new THREE.TorusGeometry(0.56, 0.085, 12, 36),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.25 })
+      );
+      rimLip.rotation.x = Math.PI / 2;
+      rimLip.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.07, SOCKET_POS.z);
+      summitGrp.add(rimLip);
+
+      // Interior Dinding Lubang Soket Cekung (Cylinder openEnded dengan BackSide!)
+      const socketDepth = 1.65;
+      const pitWall = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.50, 0.44, socketDepth, 28, 1, true),
+        new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          roughness: 0.9,
+          metalness: 0.35,
+          side: THREE.BackSide
+        })
+      );
+      pitWall.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.04 - socketDepth * 0.5, SOCKET_POS.z);
+      summitGrp.add(pitWall);
+
+      // Dasar lubang soket gelap + cincin cahaya penanda di dasar soket
+      const pitFloor = new THREE.Mesh(
+        new THREE.CircleGeometry(0.45, 24),
+        new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.95 })
+      );
+      pitFloor.rotation.x = -Math.PI / 2;
+      pitFloor.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.04 - socketDepth, SOCKET_POS.z);
+      summitGrp.add(pitFloor);
+
+      const pitGlowRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.24, 0.38, 24),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+      );
+      pitGlowRing.rotation.x = -Math.PI / 2;
+      pitGlowRing.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.06 - socketDepth, SOCKET_POS.z);
+      summitGrp.add(pitGlowRing);
+
+      // 2. Tugu Puncak Gunung Dermawan (kiri belakang soket)
+      const monument = new THREE.Group();
+      const baseMon = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.0, 2.8), new THREE.MeshStandardMaterial({ map: studRockTex, color: 0x475569 }));
+      baseMon.position.y = 0.5;
+      baseMon.castShadow = true;
+      monument.add(baseMon);
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.45 }));
+      pillar.position.y = 2.9;
+      pillar.castShadow = true;
+      monument.add(pillar);
+      const crown = new THREE.Mesh(new THREE.OctahedronGeometry(0.75, 0), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2, emissive: 0xf59e0b, emissiveIntensity: 0.35 }));
+      crown.position.y = 5.45;
+      monument.add(crown);
+      monument.position.set(-5.8, PEAK_HEIGHT, -14.2);
+      summitGrp.add(monument);
+
+      // 3. Bendera Puncak (yang akan ditancapkan tepat ke dalam lubang soket pada Fase 4!)
+      summitFlagGroup = new THREE.Group();
+      const poleHeight = 6.2;
+      // Ujung tiang meruncing di bagian paling bawah (y = -1.2) agar masuk ke dalam soket
+      const poleMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.12, poleHeight, 12),
+        new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.85, roughness: 0.2 })
+      );
+      poleMesh.position.y = poleHeight * 0.5 - 1.15;
+      poleMesh.castShadow = true;
+      summitFlagGroup.add(poleMesh);
+
+      const poleTip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.12, 0.35, 10),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8, roughness: 0.25 })
+      );
+      poleTip.rotation.x = Math.PI;
+      poleTip.position.y = -1.32;
+      summitFlagGroup.add(poleTip);
+
+      const finial = new THREE.Mesh(
+        new THREE.SphereGeometry(0.24, 14, 14),
+        new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 })
+      );
+      finial.position.y = poleHeight - 1.1;
+      summitFlagGroup.add(finial);
+
+      // Kain bendera bersegmen untuk animasi gelombang angin (vertex displacement)
+      flagClothGeo = new THREE.PlaneGeometry(3.4, 2.0, 20, 8);
+      // Geser pivot kain ke sisi kiri (menempel pada tiang)
+      flagClothGeo.translate(1.7, 0, 0);
+      flagClothBasePos = flagClothGeo.attributes.position.array.slice();
+
+      const flagMat = new THREE.MeshStandardMaterial({
+        map: createFlagTexture(),
+        side: THREE.DoubleSide,
+        roughness: 0.55
+      });
+      const flagCloth = new THREE.Mesh(flagClothGeo, flagMat);
+      flagCloth.position.set(0.08, poleHeight - 2.25, 0);
+      flagCloth.castShadow = true;
+      summitFlagGroup.add(flagCloth);
+
+      // Posisi awal sebelum ditancapkan (diangkat siap tancap / di samping karakter)
+      summitFlagGroup.position.set(SOCKET_POS.x, PEAK_HEIGHT + 2.8, SOCKET_POS.z);
+      summitFlagGroup.visible = false;
+      summitGrp.add(summitFlagGroup);
+
+      scene.add(summitGrp);
+    }
+
+    /* =========================================================================
+       6. PAPAN PENGUMUMAN (3 TITIK) & PAPAN PETUNJUK ARAH (3D INTERAKTIF)
+       ========================================================================= */
+    function createNoticeBoard3D(cfg) {
+      const grp = new THREE.Group();
+      const postMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0x78350f, roughness: 0.86 });
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.8 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.75 });
+
+      // Dua tiang kayu penyangga
+      [-2.85, 2.85].forEach(px => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.38, 5.2, 0.38), postMat);
+        post.position.set(px, 2.6, 0);
+        post.castShadow = true;
+        grp.add(post);
+      });
+
+      // Bingkai kayu papan
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(6.3, 4.0, 0.28), frameMat);
+      frame.position.set(0, 3.6, 0);
+      frame.castShadow = true;
+      frame.receiveShadow = true;
+      grp.add(frame);
+
+      // Atap mini pelindung papan
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(7.1, 0.35, 1.55), roofMat);
+      roof.position.set(0, 5.75, 0.08);
+      roof.rotation.x = 0.14;
+      roof.castShadow = true;
+      grp.add(roof);
+
+      // Bidang wajah Papan Pengumuman beresolusi tinggi
+      const boardTex = createNoticeBoardTexture(cfg.title, cfg.subtitle, cfg.lines, cfg.color, cfg.badge);
+      const faceMat = new THREE.MeshStandardMaterial({
+        map: boardTex,
+        roughness: 0.45,
+        metalness: 0.04
+      });
+      const faceFront = new THREE.Mesh(new THREE.PlaneGeometry(5.85, 3.62), faceMat);
+      faceFront.position.set(0, 3.6, 0.16);
+      faceFront.userData.readable = {
+        type: 'PAPAN PENGUMUMAN',
+        title: cfg.title,
+        elevation: cfg.elevation,
+        lines: cfg.lines,
+        fullText: cfg.fullText,
+        url: cfg.url,
+        label: cfg.label
+      };
+      grp.add(faceFront);
+      clickableSignMeshes.push(faceFront);
+
+      // Sisi belakang juga informatif
+      const faceBack = new THREE.Mesh(new THREE.PlaneGeometry(5.85, 3.62), faceMat);
+      faceBack.position.set(0, 3.6, -0.16);
+      faceBack.rotation.y = Math.PI;
+      faceBack.userData.readable = faceFront.userData.readable;
+      grp.add(faceBack);
+      clickableSignMeshes.push(faceBack);
+
+      const y = getTerrainHeight(cfg.x, cfg.z);
+      grp.position.set(cfg.x, y - 0.12, cfg.z);
+      grp.rotation.y = cfg.rotY || 0;
+      scene.add(grp);
+      return grp;
+    }
+
+    function createDirectionalSignpost3D(cfg) {
+      const grp = new THREE.Group();
+      const postMat = new THREE.MeshStandardMaterial({ map: studWoodTex, color: 0x78350f, roughness: 0.88 });
+
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.32, 3.8, 0.32), postMat);
+      post.position.y = 1.9;
+      post.castShadow = true;
+      grp.add(post);
+
+      // Bentuk papan panah bersudut
+      const signGrp = new THREE.Group();
+      signGrp.position.set(0, 3.15, 0);
+      signGrp.rotation.y = cfg.arrowYaw || 0;
+
+      const tex = createSignpostTexture(cfg.text, cfg.bg || '#fef08a', cfg.fg || '#0f172a', '#78350f');
+      const boardMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
+      const sideMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
+
+      const plank = new THREE.Mesh(
+        new THREE.BoxGeometry(3.5, 0.92, 0.18),
+        [sideMat, sideMat, sideMat, sideMat, boardMat, boardMat]
+      );
+      plank.position.x = 0.35;
+      plank.castShadow = true;
+      plank.userData.readable = {
+        type: 'PAPAN PETUNJUK ARAH',
+        title: cfg.text,
+        elevation: cfg.elevation,
+        lines: cfg.infoLines,
+        fullText: cfg.fullText,
+        url: cfg.url,
+        label: cfg.label
+      };
+      signGrp.add(plank);
+      clickableSignMeshes.push(plank);
+
+      // Ujung panah segitiga
+      const tip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.56, 0.72, 4),
+        new THREE.MeshStandardMaterial({ color: cfg.bg || '#fef08a', roughness: 0.55 })
+      );
+      tip.rotation.z = -Math.PI / 2;
+      tip.rotation.x = Math.PI / 4;
+      tip.position.set(2.38, 0, 0);
+      signGrp.add(tip);
+
+      grp.add(signGrp);
+
+      const y = getTerrainHeight(cfg.x, cfg.z);
+      grp.position.set(cfg.x, y - 0.1, cfg.z);
+      scene.add(grp);
+      return grp;
+    }
+
+    function buildAllBoardsAndSignposts() {
+      // POS 1 — PAPAN PENGUMUMAN DI BASECAMP: TENTANG SAYA
+      createNoticeBoard3D({
+        x: -3.2,
+        z: 75.5,
+        rotY: 0.12,
+        title: 'TENTANG SAYA',
+        subtitle: 'Pos 1 • Basecamp • Dunia Dermawan',
+        badge: 'POS 1',
+        color: '#f59e0b',
+        elevation: '450 MDPL',
+        lines: [
+          'SPV Maintenance Planner, Kalimantan Utara',
+          'Membangun web app dengan bantuan AI agent',
+          'Dari nol sampai live.'
+        ],
+        fullText: 'Saya Dermawan Purba. Sehari-hari merencanakan perawatan alat berat dan plant tambang. Di luar itu saya membangun web app dengan AI agent — dari nol sampai live.'
+      });
+
+      // POS 8 — PAPAN PENGUMUMAN DI TEBING: MISSION CONTROL
+      createNoticeBoard3D({
+        x: 21.5,
+        z: -28.0,
+        rotY: 2.35,
+        title: 'MISSION CONTROL',
+        subtitle: 'Pos 8 • Proyek • Tebing Curam',
+        badge: 'PROYEK',
+        color: '#ef4444',
+        elevation: '1.950 MDPL',
+        lines: [
+          'Dashboard tim AI agent saya',
+          'Anca, Tono, Dani, Cipu, Jaka, Mu',
+          'Tugas & obrolan tim tercatat.'
+        ],
+        fullText: 'Dashboard tim AI agent saya: Anca (PM), Tono (riset), Dani (coding), Cipu (video), Jaka (QC), Mu (UI/UX). Semua tugas dan obrolan tim tercatat di sini.',
+        url: 'https://www.myjarvis.my.id',
+        label: 'Buka Mission Control'
+      });
+
+      // POS 5 — PAPAN PENGUMUMAN DI JEMBATAN: AI UNTUK SEMUA
+      createNoticeBoard3D({
+        x: 53.0,
+        z: 14.0,
+        rotY: -0.5,
+        title: 'AI UNTUK SEMUA',
+        subtitle: 'Pos 5 • Proyek • Jembatan Gantung',
+        badge: 'PROYEK',
+        color: '#38bdf8',
+        elevation: '1.200 MDPL',
+        lines: [
+          'Web app realtime untuk tambang',
+          'Nikel & batubara: dashboard, LMS',
+          'Hono + SQLite + React.'
+        ],
+        fullText: 'Web app realtime & scalable untuk operasional tambang nikel dan batubara: dashboard, LMS, dan dokumen pengiriman. Dibangun dengan Hono + SQLite + React.',
+        url: 'https://www.aiuntuksemua.my.id',
+        label: 'Buka aiuntuksemua.my.id'
+      });
+
+      // PUNCAK — PAPAN PENGUMUMAN DI PUNCAK: HALO, SAYA DERMAWAN
+      createNoticeBoard3D({
+        x: 6.2,
+        z: -14.8,
+        rotY: -0.45,
+        title: 'HALO, SAYA DERMAWAN',
+        subtitle: 'Puncak • Dunia Dermawan • 2.850 MDPL',
+        badge: 'PUNCAK',
+        color: '#22c55e',
+        elevation: '2.850 MDPL',
+        lines: [
+          'SPV Maintenance Planner & AI enthusiast',
+          'Satu gunung untuk semuanya',
+          'Tiap pos bercerita tentang saya.'
+        ],
+        fullText: 'SPV Maintenance Planner di Kalimantan Utara & AI enthusiast. Satu gunung untuk semuanya — dari base camp sampai puncak, tiap pos bercerita tentang saya dan proyek yang saya bangun.'
+      });
+
+      // 7 PAPAN PETUNJUK ARAH DI SEPANJANG JALUR
+      const signConfigs = [
+        {
+          x: 6.8, z: 76.0, arrowYaw: -0.35,
+          text: '2. PENDIDIKAN ↑',
+          elevation: '460 MDPL',
+          infoLines: [
+            'S1 Teknik Industri, Univ. Mulawarman',
+            'S2 Magister Manajemen, Univ. Ciputra',
+            'Kuliah online, semester 4.'
+          ],
+          fullText: 'S1 Teknik Industri, Universitas Mulawarman. Sekarang semester 4 S2 Magister Manajemen di Universitas Ciputra Surabaya (kuliah online). Belajar terus, sambil kerja.'
+        },
+        {
+          x: 22.0, z: 62.0, arrowYaw: 2.45,
+          text: '3. PEKERJAAN ←',
+          bg: '#e0f2fe',
+          elevation: '680 MDPL',
+          infoLines: [
+            'SPV Maintenance Planner',
+            'Alat & plant tambang siap kerja',
+            'Jadwal, suku cadang, tim lapangan.'
+          ],
+          fullText: 'SPV Maintenance Planner — memastikan alat dan plant tambang siap kerja: jadwal perawatan, suku cadang, dan tim lapangan.'
+        },
+        {
+          x: 41.5, z: 34.5, arrowYaw: -0.85,
+          text: '4. AI & WEB →',
+          elevation: '1.150 MDPL',
+          infoLines: [
+            'AI Untuk Semua: web app realtime tambang',
+            'Visualisasi data & game',
+            'Dibangun dengan AI agent.'
+          ],
+          fullText: 'Saya membangun AI Untuk Semua: web app realtime untuk operasional tambang, plus alat visualisasi data dan game. Semua dibuat dengan bantuan AI agent.'
+        },
+        {
+          x: 48.0, z: -20.0, arrowYaw: 0.72,
+          text: '6. MINECHART.STUDIO →',
+          elevation: '1.620 MDPL',
+          infoLines: [
+            'Visualisasi data 13 departemen tambang',
+            '134 grafik, 28 jenis',
+            'Tiap peran lihat grafiknya.'
+          ],
+          fullText: 'Pustaka visualisasi data untuk 13 departemen pertambangan — 134 grafik, 28 jenis. Tiap peran bisa lihat grafik yang ia butuhkan.',
+          url: 'https://dermawanpurba.github.io/MineChart.studio/',
+          label: 'Buka MineChart.studio'
+        },
+        {
+          x: 34.5, z: -34.5, arrowYaw: 0.55,
+          text: '7. PULAU KOMUNITAS ↑',
+          bg: '#fecaca', fg: '#991b1b',
+          elevation: '1.880 MDPL',
+          infoLines: [
+            'Game survival pulau 3D di browser',
+            'Mancing, berkebun, masak',
+            'Multiplayer room code.'
+          ],
+          fullText: 'Game survival pulau 3D di browser: mancing, berkebun, masak, dan multiplayer dengan room code. NPC Budi, Siti, dan Rama menemani di pulau.',
+          url: 'https://dermawanpurba.github.io/Game-komunitas/',
+          label: 'Main gamenya'
+        },
+        {
+          x: -10.5, z: -28.0, arrowYaw: 1.95,
+          text: '9. SHEET-MANAGER ↗',
+          bg: '#dcfce7', fg: '#14532d',
+          elevation: '2.520 MDPL',
+          infoLines: [
+            'Backup SQLite ERP jadi grid Sheets',
+            'Edit & simpan kembali ke SQLite',
+            'Ekspor JSON + dump MySQL.'
+          ],
+          fullText: 'Buka backup SQLite ERP sebagai grid ala Google Sheets: bisa edit, simpan kembali ke SQLite, dan ekspor JSON + dump MySQL. Dibangun dengan PHP.',
+          url: 'https://github.com/Dermawanpurba/Sheet-manager',
+          label: 'Lihat di GitHub'
+        },
+        {
+          x: 0.0, z: -22.0, arrowYaw: 1.9,
+          text: '10. OPEN-IDM ↗',
+          elevation: '2.700 MDPL',
+          infoLines: [
+            'Alternatif IDM yang open source',
+            'Unduh lebih cepat, gratis',
+            'Kodenya terbuka.'
+          ],
+          fullText: 'Alternatif Internet Download Manager yang open source. Unduh file lebih cepat, gratis, dan kodenya terbuka untuk siapa saja.',
+          url: 'https://github.com/Dermawanpurba/open-idm',
+          label: 'Lihat di GitHub'
+        }
+      ];
+      signConfigs.forEach(createDirectionalSignpost3D);
+    }
+
+    /* =========================================================================
+       7. KARAKTER ROBLOX DENGAN ANALYTICAL TWO-BONE IK & CLEARANCE CAPSULE
+       ========================================================================= */
+    const climber = {
+      root: new THREE.Group(),
+      pelvis: new THREE.Group(),
+      torso: new THREE.Group(),
+      headGroup: new THREE.Group(),
+      headMesh: null,
+      torsoMesh: null,
+      packMesh: null,
+      headgearMeshes: {},
+      // Segmen IK dalam World-Space agar solver bebas distorsi hierarki
+      limbsWorld: new THREE.Group(),
+      // Panjang tulang (L1 = paha/lengan atas, L2 = betis/lengan bawah)
+      armL1: 0.92,
+      armL2: 0.88,
+      legL1: 0.96,
+      legL2: 0.94,
+      parts: {},
+      // Kapak Es 8-segmen CatmullRomCurve3
+      iceAxeGroup: new THREE.Group(),
+      iceAxeShaftMesh: null,
+      iceAxeHeadGroup: new THREE.Group(),
+      iceAxeVelocityLag: new THREE.Vector3(),
+      prevHandPos: new THREE.Vector3(),
+      // Bayangan lingkaran kontak permukaan
+      groundShadow: null
+    };
+
+    function createLimbVisual(radius, length, colorHex) {
+      // Bentuk blocky-beveled khas Roblox dengan sendi bola agar tidak pernah patah
+      const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.55 });
+      const grp = new THREE.Group();
+      const box = new THREE.Mesh(new THREE.BoxGeometry(radius * 1.9, length, radius * 1.9), mat);
+      box.position.y = length * 0.5;
+      box.castShadow = true;
+      grp.add(box);
+      const jointStart = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.96, 12, 12), mat);
+      grp.add(jointStart);
+      const jointEnd = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.92, 12, 12), mat);
+      jointEnd.position.y = length;
+      grp.add(jointEnd);
+      grp.userData.mat = mat;
+      return grp;
+    }
+
+    function buildRobloxClimber() {
+      scene.add(climber.root);
+      scene.add(climber.limbsWorld);
+
+      const p = OUTFIT_PRESETS[THEME_CONFIG.outfit];
+
+      // Pelvis & Torso
+      climber.pelvis.position.y = 1.9;
+      climber.root.add(climber.pelvis);
+
+      const torsoTex = createTorsoTexture(THEME_CONFIG.outfit);
+      const torsoSideMat = new THREE.MeshStandardMaterial({ color: p.torso, roughness: 0.55 });
+      const torsoFrontMat = new THREE.MeshStandardMaterial({ map: torsoTex, roughness: 0.52 });
+      climber.torsoMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.42, 1.56, 0.82),
+        [torsoSideMat, torsoSideMat, torsoSideMat, torsoSideMat, torsoFrontMat, torsoSideMat]
+      );
+      climber.torsoMesh.position.y = 0.82;
+      climber.torsoMesh.castShadow = true;
+      climber.torso.add(climber.torsoMesh);
+
+      // Ransel Pendaki Roblox di punggung
+      const packGrp = new THREE.Group();
+      const packMat = new THREE.MeshStandardMaterial({ color: p.pack, roughness: 0.65 });
+      const packBody = new THREE.Mesh(new THREE.BoxGeometry(1.12, 1.28, 0.58), packMat);
+      packBody.castShadow = true;
+      packGrp.add(packBody);
+      const rollPad = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.24, 12), new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.7 }));
+      rollPad.rotation.z = Math.PI / 2;
+      rollPad.position.set(0, 0.74, 0);
+      packGrp.add(rollPad);
+      packGrp.position.set(0, 0.86, -0.68);
+      climber.packMesh = packBody;
+      climber.torso.add(packGrp);
+
+      // Kepala Blocky-Beveled dengan ekspresi wajah Roblox
+      climber.headGroup.position.set(0, 1.66, 0);
+      const headMatSide = new THREE.MeshStandardMaterial({ color: p.head, roughness: 0.45 });
+      const headMatFace = new THREE.MeshStandardMaterial({ map: createRobloxFaceTexture(THEME_CONFIG.outfit), roughness: 0.42 });
+      climber.headMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.96, 0.96, 0.96),
+        [headMatSide, headMatSide, headMatSide, headMatSide, headMatFace, headMatSide]
+      );
+      climber.headMesh.position.y = 0.52;
+      climber.headMesh.castShadow = true;
+      climber.headGroup.add(climber.headMesh);
+
+      // 4 Opsi Headgear Modular (Helm Panjat, Topi Explorer, Visor, Headband)
+      // A. Helm Panjat + Headlamp
+      const helmet = new THREE.Group();
+      const dome = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.56, 1.12), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.35 }));
+      dome.position.y = 0.86;
+      dome.castShadow = true;
+      helmet.add(dome);
+      const headlamp = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.22, 0.18), new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.9 }));
+      headlamp.position.set(0, 0.84, 0.58);
+      helmet.add(headlamp);
+      climber.headGroup.add(helmet);
+      climber.headgearMeshes.helmet = helmet;
+
+      // B. Topi Explorer
+      const explorer = new THREE.Group();
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.96, 1.02, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.85 }));
+      brim.position.y = 0.96;
+      explorer.add(brim);
+      const crownHat = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.52, 12), new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85 }));
+      crownHat.position.y = 1.22;
+      explorer.add(crownHat);
+      climber.headGroup.add(explorer);
+      climber.headgearMeshes.explorer = explorer;
+
+      // C. Cyber Visor
+      const visor = new THREE.Group();
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.34, 0.34), new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x06b6d4, emissiveIntensity: 0.75, roughness: 0.15, metalness: 0.8 }));
+      glass.position.set(0, 0.60, 0.42);
+      visor.add(glass);
+      climber.headGroup.add(visor);
+      climber.headgearMeshes.visor = visor;
+
+      // D. Headband Pendaki
+      const headband = new THREE.Group();
+      const band = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.22, 1.04), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.7 }));
+      band.position.y = 0.78;
+      headband.add(band);
+      climber.headGroup.add(headband);
+      climber.headgearMeshes.headband = headband;
+
+      // Nama "Dermawan" di atas kepala karakter
+      (function(){
+        const c=document.createElement('canvas');c.width=512;c.height=128;
+        const g=c.getContext('2d');
+        g.fillStyle='rgba(255,255,255,0.95)';
+        g.beginPath();
+        g.moveTo(52,14);g.lineTo(460,14);g.arcTo(506,14,506,60,46);
+        g.lineTo(506,60);g.arcTo(506,114,460,114,46);
+        g.lineTo(52,114);g.arcTo(6,114,6,60,46);
+        g.lineTo(6,60);g.arcTo(6,14,52,14,46);
+        g.closePath();g.fill();
+        g.fillStyle='#0f172a';g.font='800 46px "Plus Jakarta Sans", system-ui, sans-serif';
+        g.textAlign='center';g.textBaseline='middle';g.fillText('Dermawan',256,66);
+        const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+        const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+        sp.scale.set(3.6,0.9,1);sp.position.set(0,5.4,0);
+        climber.root.add(sp);
+      })();
+
+      climber.torso.add(climber.headGroup);
+      climber.pelvis.add(climber.torso);
+
+      // Titik jangkar sendi lokal pada torso & pelvis
+      climber.anchors = {
+        shoulderL: new THREE.Object3D(),
+        shoulderR: new THREE.Object3D(),
+        hipL: new THREE.Object3D(),
+        hipR: new THREE.Object3D(),
+        neck: new THREE.Object3D()
+      };
+      climber.anchors.shoulderL.position.set(-0.92, 1.40, 0);
+      climber.anchors.shoulderR.position.set(0.92, 1.40, 0);
+      climber.anchors.neck.position.set(0, 1.62, 0);
+      climber.torso.add(climber.anchors.shoulderL, climber.anchors.shoulderR, climber.anchors.neck);
+
+      climber.anchors.hipL.position.set(-0.42, 0.02, 0);
+      climber.anchors.hipR.position.set(0.42, 0.02, 0);
+      climber.pelvis.add(climber.anchors.hipL, climber.anchors.hipR);
+
+      // Visual 4 Anggota Tubuh (2 segmen per anggota tubuh + tangan/sepatu)
+      climber.parts = {
+        upperArmL: createLimbVisual(0.24, climber.armL1, p.arms),
+        lowerArmL: createLimbVisual(0.21, climber.armL2, p.hands),
+        upperArmR: createLimbVisual(0.24, climber.armL1, p.arms),
+        lowerArmR: createLimbVisual(0.21, climber.armL2, p.hands),
+        upperLegL: createLimbVisual(0.28, climber.legL1, p.legs),
+        lowerLegL: createLimbVisual(0.24, climber.legL2, p.boots),
+        upperLegR: createLimbVisual(0.28, climber.legL1, p.legs),
+        lowerLegR: createLimbVisual(0.24, climber.legL2, p.boots)
+      };
+      Object.values(climber.parts).forEach(mesh => climber.limbsWorld.add(mesh));
+
+      // Kapak Es Pendaki (Climbing Ice Axe) dengan batang kurva 8-segmen dinamis
+      const pickMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.22 });
+      const headCore = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.95), pickMat);
+      headCore.position.z = 0.16;
+      climber.iceAxeHeadGroup.add(headCore);
+      const pickPoint = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.55, 4), pickMat);
+      pickPoint.rotation.x = Math.PI * 0.56;
+      pickPoint.position.set(0, -0.06, 0.78);
+      climber.iceAxeHeadGroup.add(pickPoint);
+      climber.iceAxeGroup.add(climber.iceAxeHeadGroup);
+
+      const initCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 1.1, 0),
+        new THREE.Vector3(0, 2.1, 0)
+      ]);
+      climber.iceAxeShaftMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(initCurve, 8, 0.068, 7, false),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.55, roughness: 0.3 })
+      );
+      climber.iceAxeShaftMesh.castShadow = true;
+      climber.iceAxeGroup.add(climber.iceAxeShaftMesh);
+      scene.add(climber.iceAxeGroup);
+
+      // Bayangan lembut di permukaan tanah langsung di bawah karakter
+      climber.groundShadow = new THREE.Mesh(
+        new THREE.CircleGeometry(1.15, 20),
+        new THREE.MeshBasicMaterial({ color: 0x020617, transparent: true, opacity: 0.34, depthWrite: false })
+      );
+      climber.groundShadow.rotation.x = -Math.PI / 2;
+      scene.add(climber.groundShadow);
+
+      applyOutfitPreset(THEME_CONFIG.outfit);
+      applyHeadgearPreset(THEME_CONFIG.headgear);
+    }
+
+    function applyOutfitPreset(key) {
+      const p = OUTFIT_PRESETS[key] || OUTFIT_PRESETS.pro;
+      THEME_CONFIG.outfit = key;
+      const sideMat = new THREE.MeshStandardMaterial({ color: p.torso, roughness: 0.55 });
+      const frontMat = new THREE.MeshStandardMaterial({ map: createTorsoTexture(key), roughness: 0.52 });
+      climber.torsoMesh.material = [sideMat, sideMat, sideMat, sideMat, frontMat, sideMat];
+
+      const headSide = new THREE.MeshStandardMaterial({ color: p.head, roughness: 0.45 });
+      const headFace = new THREE.MeshStandardMaterial({ map: createRobloxFaceTexture(key), roughness: 0.42 });
+      climber.headMesh.material = [headSide, headSide, headSide, headSide, headFace, headSide];
+
+      climber.packMesh.material.color.setHex(p.pack);
+      climber.parts.upperArmL.userData.mat.color.setHex(p.arms);
+      climber.parts.upperArmR.userData.mat.color.setHex(p.arms);
+      climber.parts.lowerArmL.userData.mat.color.setHex(p.hands);
+      climber.parts.lowerArmR.userData.mat.color.setHex(p.hands);
+      climber.parts.upperLegL.userData.mat.color.setHex(p.legs);
+      climber.parts.upperLegR.userData.mat.color.setHex(p.legs);
+      climber.parts.lowerLegL.userData.mat.color.setHex(p.boots);
+      climber.parts.lowerLegR.userData.mat.color.setHex(p.boots);
+    }
+
+    function applyHeadgearPreset(key) {
+      THEME_CONFIG.headgear = key;
+      Object.entries(climber.headgearMeshes).forEach(([k, grp]) => {
+        grp.visible = (k === key);
+      });
+    }
+
+    /* -------------------------------------------------------------------------
+       SOLVER ANALYTICAL TWO-BONE INVERSE KINEMATICS (HUKUM KOSINUS)
+       ------------------------------------------------------------------------- */
+    const _ikUp = new THREE.Vector3(0, 1, 0);
+    const _ikToTarget = new THREE.Vector3();
+    const _ikDir = new THREE.Vector3();
+    const _ikBendDir = new THREE.Vector3();
+    const _ikSegDir = new THREE.Vector3();
+
+    /**
+     * Menghitung posisi sendi tengah (siku / lutut) secara analitis di world-space
+     * menggunakan Hukum Kosinus & poleVector, lalu mengorientasikan kedua segmen
+     * memakai quaternion.setFromUnitVectors.
+     */
+    function solveTwoBoneIK(rootPos, targetPos, L1, L2, poleVector, upperMesh, lowerMesh, outMidPos, outEndPos) {
+      _ikToTarget.subVectors(targetPos, rootPos);
+      let d = _ikToTarget.length();
+      const minD = Math.abs(L1 - L2) + 0.02;
+      const maxD = (L1 + L2) - 0.008;
+      if (d < 0.0001) {
+        _ikDir.set(0, -1, 0);
+        d = minD;
+      } else {
+        _ikDir.copy(_ikToTarget).divideScalar(d);
+        d = Math.max(minD, Math.min(maxD, d));
+      }
+
+      // Hukum Kosinus untuk sudut di root (bahu / pinggul)
+      const cosAlpha = THREE.MathUtils.clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1);
+      const sinAlpha = Math.sqrt(Math.max(0, 1 - cosAlpha * cosAlpha));
+
+      // Arah tekukan tegak lurus terhadap vektor root->target memakai poleVector
+      const proj = poleVector.dot(_ikDir);
+      _ikBendDir.copy(poleVector).addScaledVector(_ikDir, -proj);
+      if (_ikBendDir.lengthSq() < 0.0001) {
+        _ikBendDir.set(0, 0, 1);
+      } else {
+        _ikBendDir.normalize();
+      }
+
+      outMidPos.copy(rootPos)
+        .addScaledVector(_ikDir, L1 * cosAlpha)
+        .addScaledVector(_ikBendDir, L1 * sinAlpha);
+
+      outEndPos.copy(rootPos).addScaledVector(_ikDir, d);
+
+      // Orientasikan segmen atas (root -> mid)
+      upperMesh.position.copy(rootPos);
+      _ikSegDir.subVectors(outMidPos, rootPos).normalize();
+      upperMesh.quaternion.setFromUnitVectors(_ikUp, _ikSegDir);
+
+      // Orientasikan segmen bawah (mid -> end)
+      lowerMesh.position.copy(outMidPos);
+      _ikSegDir.subVectors(outEndPos, outMidPos).normalize();
+      lowerMesh.quaternion.setFromUnitVectors(_ikUp, _ikSegDir);
+    }
+
+    /* -------------------------------------------------------------------------
+       PHYSICS CAPSULE COLLISION CLEARANCE (MENCEGAH CLIPPING KAPAK ES & TUBUH)
+       ------------------------------------------------------------------------- */
+    const _capAB = new THREE.Vector3();
+    const _capAP = new THREE.Vector3();
+    const _capClosest = new THREE.Vector3();
+    const _capDelta = new THREE.Vector3();
+
+    function pushPointOutOfCapsule(pt, segA, segB, capsuleRadius) {
+      _capAB.subVectors(segB, segA);
+      const lenSq = _capAB.lengthSq();
+      let t = 0;
+      if (lenSq > 0.00001) {
+        _capAP.subVectors(pt, segA);
+        t = Math.max(0, Math.min(1, _capAP.dot(_capAB) / lenSq));
+      }
+      _capClosest.copy(segA).addScaledVector(_capAB, t);
+      _capDelta.subVectors(pt, _capClosest);
+      const dist = _capDelta.length();
+      if (dist < capsuleRadius) {
+        if (dist < 0.0001) {
+          _capDelta.set(0, 0, 1);
+        } else {
+          _capDelta.divideScalar(dist);
+        }
+        pt.copy(_capClosest).addScaledVector(_capDelta, capsuleRadius);
+      }
+    }
+
+    /**
+     * Membangun bounding capsule world-space untuk torso, paha kiri/kanan,
+     * dan betis kiri/kanan, lalu memproyeksikan titik kurva Kapak Es keluar
+     * mengikuti normal luar agar alat tidak pernah menembus tubuh/kaki!
+     */
+    function enforceLegAndTorsoClearance(axePoints, capsules) {
+      for (let i = 0; i < axePoints.length; i++) {
+        const pt = axePoints[i];
+        for (let c = 0; c < capsules.length; c++) {
+          const cap = capsules[c];
+          pushPointOutOfCapsule(pt, cap.a, cap.b, cap.r);
+        }
+      }
+    }
+
+    // Buffer titik kerja IK agar zero-GC per frame
+    const _wHipL = new THREE.Vector3(), _wHipR = new THREE.Vector3();
+    const _wShL = new THREE.Vector3(), _wShR = new THREE.Vector3();
+    const _wPelvis = new THREE.Vector3(), _wNeck = new THREE.Vector3();
+    const _tFootL = new THREE.Vector3(), _tFootR = new THREE.Vector3();
+    const _tHandL = new THREE.Vector3(), _tHandR = new THREE.Vector3();
+    const _kneeL = new THREE.Vector3(), _kneeR = new THREE.Vector3();
+    const _ankleL = new THREE.Vector3(), _ankleR = new THREE.Vector3();
+    const _elbowL = new THREE.Vector3(), _elbowR = new THREE.Vector3();
+    const _wristL = new THREE.Vector3(), _wristR = new THREE.Vector3();
+    const _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+    const _poleKnee = new THREE.Vector3(), _poleElbowL = new THREE.Vector3(), _poleElbowR = new THREE.Vector3();
+    const _axeCtrlPts = Array.from({ length: 9 }, () => new THREE.Vector3());
+
+    function updateClimberIKAndIceAxe(dt, animState) {
+      // Update world matrices tubuh sebelum mengambil anchor bahu/pinggul
+      climber.root.updateMatrixWorld(true);
+
+      climber.anchors.hipL.getWorldPosition(_wHipL);
+      climber.anchors.hipR.getWorldPosition(_wHipR);
+      climber.anchors.shoulderL.getWorldPosition(_wShL);
+      climber.anchors.shoulderR.getWorldPosition(_wShR);
+      climber.pelvis.getWorldPosition(_wPelvis);
+      climber.anchors.neck.getWorldPosition(_wNeck);
+
+      // Basis arah karakter
+      _fwd.set(0, 0, 1).applyQuaternion(climber.root.quaternion).normalize();
+      _right.set(1, 0, 0).applyQuaternion(climber.root.quaternion).normalize();
+
+      const stride = animState.stridePhase;
+      const moveAmp = animState.moveAmp;
+      const isClimb = animState.isClimbing;
+      const isJump = animState.isJumping;
+      const isPlanting = animState.isPlanting;
+      const prepFlourish = animState.prepFlourish || 0;
+
+      // 1. Hitung target IK kaki kiri & kanan
+      const basePos = climber.root.position;
+      if (isClimb) {
+        // Gerakan panjat tebing bergantian menggapai pijakan
+        const liftL = Math.max(0, Math.sin(stride)) * 0.72;
+        const liftR = Math.max(0, Math.sin(stride + Math.PI)) * 0.72;
+        _tFootL.copy(basePos).addScaledVector(_right, -0.52).addScaledVector(_fwd, 0.38).addScaledVector(_up, 0.25 + liftL);
+        _tFootR.copy(basePos).addScaledVector(_right, 0.52).addScaledVector(_fwd, 0.38).addScaledVector(_up, 0.25 + liftR);
+      } else if (isJump) {
+        _tFootL.copy(basePos).addScaledVector(_right, -0.45).addScaledVector(_fwd, 0.45).addScaledVector(_up, 0.52);
+        _tFootR.copy(basePos).addScaledVector(_right, 0.45).addScaledVector(_fwd, -0.35).addScaledVector(_up, 0.28);
+      } else {
+        const stepL = Math.sin(stride) * 0.78 * moveAmp;
+        const stepR = Math.sin(stride + Math.PI) * 0.78 * moveAmp;
+        const liftL = Math.max(0, Math.cos(stride)) * 0.42 * moveAmp;
+        const liftR = Math.max(0, Math.cos(stride + Math.PI)) * 0.42 * moveAmp;
+        _tFootL.copy(basePos).addScaledVector(_right, -0.42).addScaledVector(_fwd, stepL).addScaledVector(_up, 0.06 + liftL);
+        _tFootR.copy(basePos).addScaledVector(_right, 0.42).addScaledVector(_fwd, stepR).addScaledVector(_up, 0.06 + liftR);
+      }
+
+      // Pole vector lutut selalu mengarah ke depan
+      _poleKnee.copy(_fwd).addScaledVector(_up, 0.12).normalize();
+      solveTwoBoneIK(_wHipL, _tFootL, climber.legL1, climber.legL2, _poleKnee, climber.parts.upperLegL, climber.parts.lowerLegL, _kneeL, _ankleL);
+      solveTwoBoneIK(_wHipR, _tFootR, climber.legL1, climber.legL2, _poleKnee, climber.parts.upperLegR, climber.parts.lowerLegR, _kneeR, _ankleR);
+
+      // 2. Hitung target IK tangan kiri & kanan
+      if (isPlanting) {
+        // Kedua tangan memegang tiang Bendera Puncak & menancapkan ke soket
+        const flagPoleBase = summitFlagGroup.position;
+        _tHandR.set(flagPoleBase.x, flagPoleBase.y + 1.35, flagPoleBase.z).addScaledVector(_right, 0.14);
+        _tHandL.set(flagPoleBase.x, flagPoleBase.y + 0.85, flagPoleBase.z).addScaledVector(_right, -0.14);
+      } else if (isClimb) {
+        // Mencari pegangan panjat terdekat di depan karakter untuk diraih secara bergantian!
+        const reachL = Math.max(0, Math.sin(stride + Math.PI)) * 0.85;
+        const reachR = Math.max(0, Math.sin(stride)) * 0.85;
+        _tHandL.copy(_wShL).addScaledVector(_fwd, 0.82).addScaledVector(_up, 0.55 + reachL).addScaledVector(_right, -0.22);
+        _tHandR.copy(_wShR).addScaledVector(_fwd, 0.82).addScaledVector(_up, 0.55 + reachR).addScaledVector(_right, 0.22);
+
+        // Snap halus ke 3D climbing hold jika dekat
+        for (let i = 0; i < climbingHolds.length; i++) {
+          const h = climbingHolds[i];
+          if (h.distanceTo(_tHandL) < 1.35) _tHandL.lerp(h, 0.55);
+          if (h.distanceTo(_tHandR) < 1.35) _tHandR.lerp(h, 0.55);
+        }
+      } else if (prepFlourish > 0.001) {
+        // Fase 1 Basecamp: Tangan kanan mengayun gagah Kapak Es ke depan/atas (tanpa menembus kaki!)
+        const swingAngle = Math.sin(prepFlourish * Math.PI) * 0.9;
+        _tHandR.copy(_wShR)
+          .addScaledVector(_fwd, 0.92)
+          .addScaledVector(_right, 0.34)
+          .addScaledVector(_up, -0.15 + swingAngle * 0.95);
+        _tHandL.copy(_wShL)
+          .addScaledVector(_fwd, 0.55)
+          .addScaledVector(_right, -0.28)
+          .addScaledVector(_up, -0.45 + Math.sin(prepFlourish * Math.PI) * 0.25);
+      } else {
+        // Berjalan / Berlari / Siaga di scroll = 0.0
+        const armSwingL = Math.sin(stride + Math.PI) * 0.65 * moveAmp;
+        const armSwingR = Math.sin(stride) * 0.42 * moveAmp;
+        _tHandL.copy(_wShL)
+          .addScaledVector(_fwd, 0.35 + armSwingL)
+          .addScaledVector(_right, -0.24)
+          .addScaledVector(_up, -0.78 + Math.abs(armSwingL) * 0.25);
+        // Tangan kanan memegang Kapak Es selalu mengarah ke DEPAN-KANAN secara natural (bahkan di scroll = 0.0!)
+        _tHandR.copy(_wShR)
+          .addScaledVector(_fwd, 0.78 + armSwingR)
+          .addScaledVector(_right, 0.34)
+          .addScaledVector(_up, -0.45 + (isJump ? 0.65 : 0.0));
+      }
+
+      _poleElbowL.copy(_fwd).multiplyScalar(-0.7).addScaledVector(_right, -0.6).addScaledVector(_up, -0.2).normalize();
+      _poleElbowR.copy(_fwd).multiplyScalar(-0.7).addScaledVector(_right, 0.6).addScaledVector(_up, -0.2).normalize();
+      solveTwoBoneIK(_wShL, _tHandL, climber.armL1, climber.armL2, _poleElbowL, climber.parts.upperArmL, climber.parts.lowerArmL, _elbowL, _wristL);
+      solveTwoBoneIK(_wShR, _tHandR, climber.armL1, climber.armL2, _poleElbowR, climber.parts.upperArmR, climber.parts.lowerArmR, _elbowR, _wristR);
+
+      // 3. Perbarui Kapak Es 8-segmen CatmullRomCurve3 + Physics Capsule Clearance
+      climber.iceAxeGroup.visible = !isPlanting;
+      if (!isPlanting) {
+        // Hitung kecepatan tangan untuk efek lentur (lag/kick) dinamis pada batang kapak es
+        const handVel = _capDelta.subVectors(_wristR, climber.prevHandPos);
+        if (dt > 0.001 && handVel.length() < 6.0) {
+          handVel.divideScalar(dt);
+          climber.iceAxeVelocityLag.lerp(handVel.clampLength(0, 12), Math.min(1, dt * 8));
+        }
+        climber.prevHandPos.copy(_wristR);
+
+        // Arah utama kapak es: selalu mengarah ke DEPAN & ATAS (tidak pernah menusuk ke belakang di antara kaki!)
+        const axeDir = new THREE.Vector3()
+          .copy(_fwd).multiplyScalar(0.72)
+          .addScaledVector(_up, isClimb ? 0.85 : 0.62)
+          .addScaledVector(_right, 0.28)
+          .normalize();
+
+        const axeLen = 1.85;
+        for (let i = 0; i < _axeCtrlPts.length; i++) {
+          const u = i / (_axeCtrlPts.length - 1);
+          const flex = u * u * 0.022;
+          _axeCtrlPts[i].copy(_wristR)
+            .addScaledVector(axeDir, (u - 0.14) * axeLen)
+            .addScaledVector(climber.iceAxeVelocityLag, -flex);
+        }
+
+        // Bangun bounding capsule tubuh & kaki setelah IK selesai
+        const bodyCapsules = [
+          { a: _wPelvis, b: _wNeck, r: 0.86 },
+          { a: _wHipL, b: _kneeL, r: 0.50 },
+          { a: _kneeL, b: _ankleL, r: 0.44 },
+          { a: _wHipR, b: _kneeR, r: 0.50 },
+          { a: _kneeR, b: _ankleR, r: 0.44 }
+        ];
+        enforceLegAndTorsoClearance(_axeCtrlPts, bodyCapsules);
+
+        // Rebuild mesh batang kurva 8-segmen secara ringan
+        const curve = new THREE.CatmullRomCurve3(_axeCtrlPts);
+        const newShaftGeo = new THREE.TubeGeometry(curve, 8, 0.068, 7, false);
+        climber.iceAxeShaftMesh.geometry.dispose();
+        climber.iceAxeShaftMesh.geometry = newShaftGeo;
+
+        // Posisikan kepala kapak es di ujung kurva
+        const tipPos = _axeCtrlPts[_axeCtrlPts.length - 1];
+        const prevTip = _axeCtrlPts[_axeCtrlPts.length - 2];
+        const tipDir = _ikSegDir.subVectors(tipPos, prevTip).normalize();
+        climber.iceAxeHeadGroup.position.copy(tipPos);
+        climber.iceAxeHeadGroup.quaternion.setFromUnitVectors(_ikUp, tipDir);
+      }
+
+      // 4. Bayangan kontak di permukaan tanah
+      const surf = getWalkableSurface(basePos.x, basePos.z, totalTime);
+      const airGap = Math.max(0, basePos.y - surf.y);
+      climber.groundShadow.position.set(basePos.x, surf.y + 0.08, basePos.z);
+      const sScale = Math.max(0.35, 1.0 - airGap * 0.08);
+      climber.groundShadow.scale.setScalar(sScale);
+      climber.groundShadow.material.opacity = Math.max(0.08, 0.36 - airGap * 0.04);
+    }
+
+    /* =========================================================================
+       8. KOREOGRAFI 4 FASE SCROLL & JALUR LINTASAN BERCAHAYA (CatmullRomCurve3)
+       ========================================================================= */
+    const trailWaypoints = [
+      // Fase 1 (0.00 - 0.18): Basecamp -> Gerbang Start -> Kaki Gunung
+      new THREE.Vector3(0.0, 0, 81.0),
+      new THREE.Vector3(4.5, 0, 75.0),
+      new THREE.Vector3(12.5, 0, 68.0),
+      new THREE.Vector3(24.0, 0, 56.5),
+      // Fase 2 (0.18 - 0.70): Pos 1 Jembatan Gantung -> Belokan Batu -> Panjat Tebing Pos 2
+      new THREE.Vector3(38.0, 0, 41.0),
+      new THREE.Vector3(46.8, 0, 23.0),
+      new THREE.Vector3(BRIDGE_START.x, BRIDGE_START.y, BRIDGE_START.z),
+      new THREE.Vector3(BRIDGE_MID.x, BRIDGE_MID.y - 1.05, BRIDGE_MID.z),
+      new THREE.Vector3(BRIDGE_END.x, BRIDGE_END.y, BRIDGE_END.z),
+      new THREE.Vector3(50.5, 0, -21.0),
+      new THREE.Vector3(40.5, 0, -31.0),
+      // Tebing Curam Panjat IK
+      new THREE.Vector3(33.5, 0, -27.8),
+      new THREE.Vector3(26.5, 0, -24.5),
+      // Fase 3 (0.70 - 0.90): Punggungan Salju -> Lompatan Akhir ke Puncak
+      new THREE.Vector3(16.0, 0, -29.5),
+      new THREE.Vector3(0.5, 0, -31.0),
+      new THREE.Vector3(-14.0, 0, -24.0),
+      new THREE.Vector3(-12.5, 0, -14.0),
+      // Fase 4 (0.90 - 1.00): Pelataran Puncak & Soket Bendera
+      new THREE.Vector3(-4.5, PEAK_HEIGHT, -11.2),
+      new THREE.Vector3(-1.35, PEAK_HEIGHT, -10.0)
+    ];
+
+    // Koreksi tinggi Y waypoint sesuai terrain/jembatan
+    trailWaypoints.forEach((pt, idx) => {
+      if (idx < 6 || (idx > 8 && idx < 17)) {
+        pt.y = getTerrainHeight(pt.x, pt.z) + 0.05;
+      }
+    });
+
+    const masterTrailCurve = new THREE.CatmullRomCurve3(trailWaypoints, false, 'catmullrom', 0.45);
+    let glowingTrailMesh = null;
+
+    function buildGlowingClimbingTrail() {
+      const samplePts = masterTrailCurve.getPoints(160);
+      samplePts.forEach(p => {
+        const surf = getWalkableSurface(p.x, p.z, 0);
+        p.y = Math.max(p.y, surf.y) + 0.24;
+      });
+      const smoothCurve = new THREE.CatmullRomCurve3(samplePts);
+      const geo = new THREE.TubeGeometry(smoothCurve, 180, 0.14, 6, false);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.48
+      });
+      glowingTrailMesh = new THREE.Mesh(geo, mat);
+      scene.add(glowingTrailMesh);
+    }
+
+    /* =========================================================================
+       9. SISTEM PARTIKEL & SIMULASI FISIKA REAL-TIME (BATU, KOTAK, KEMBANG API)
+       ========================================================================= */
+    function spawnParticleBurst(origin, colorHex, count = 22, speed = 7.5, gravity = -16) {
+      const geo = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      const vels = [];
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = origin.x;
+        positions[i * 3 + 1] = origin.y;
+        positions[i * 3 + 2] = origin.z;
+        const theta = Math.random() * Math.PI * 2;
+        const upBias = 0.35 + Math.random() * 0.9;
+        const spd = speed * (0.4 + Math.random() * 0.8);
+        vels.push(new THREE.Vector3(Math.cos(theta) * spd, upBias * spd, Math.sin(theta) * spd));
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        color: colorHex,
+        size: 0.42,
+        transparent: true,
+        opacity: 1.0
+      });
+      const pts = new THREE.Points(geo, mat);
+      scene.add(pts);
+      particleSystems.push({ mesh: pts, vels, gravity, life: 1.0, maxLife: 1.0 + Math.random() * 0.5 });
+    }
+
+    function spawnFireworksCelebration() {
+      const colors = [0xef4444, 0xfacc15, 0x38bdf8, 0x22c55e, 0xe879f9];
+      for (let i = 0; i < 5; i++) {
+        const offset = new THREE.Vector3(
+          SOCKET_POS.x + (Math.random() - 0.5) * 14,
+          PEAK_HEIGHT + 5.5 + Math.random() * 7.5,
+          SOCKET_POS.z + (Math.random() - 0.5) * 14
+        );
+        spawnParticleBurst(offset, colors[i % colors.length], 38, 11.0, -9.5);
+      }
+    }
+
+    /**
+     * Spawn Batu Fisika Gelinding & Memantul dari lereng atas Gunung Dermawan.
+     */
+    const boulderGeoTemplate = (() => {
+      const g = new THREE.DodecahedronGeometry(1.0, 1);
+      const pos = g.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+        const n = 0.84 + 0.28 * Math.sin(vx * 4.1 + vy * 3.7 + vz * 2.9);
+        pos.setXYZ(i, vx * n, vy * n, vz * n);
+      }
+      g.computeVertexNormals();
+      return g;
+    })();
+    const boulderMat = new THREE.MeshStandardMaterial({ map: studRockTex, color: 0x64748b, roughness: 0.92, flatShading: true });
+
+    function spawnPhysicsBoulder(customOrigin = null, customVel = null) {
+      // Batasi maksimal 14 batu aktif agar tetap 60fps
+      if (physicsBoulders.length >= 14) {
+        const old = physicsBoulders.shift();
+        scene.remove(old.mesh);
+      }
+
+      const radius = 1.15 + Math.random() * 0.95;
+      const mesh = new THREE.Mesh(boulderGeoTemplate, boulderMat);
+      mesh.scale.setScalar(radius);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      // Default spawn di lereng atas di atas Pos 2 & Zona Batu Jatuh
+      const spawnAngle = customOrigin ? 0 : (-0.75 + (Math.random() - 0.5) * 0.85);
+      const spawnR = 16.5 + Math.random() * 4.0;
+      const pos = customOrigin ? customOrigin.clone() : new THREE.Vector3(
+        PEAK_X + Math.cos(spawnAngle) * spawnR,
+        0,
+        PEAK_Z + Math.sin(spawnAngle) * spawnR
+      );
+      if (!customOrigin) {
+        pos.y = getTerrainHeight(pos.x, pos.z) + radius + 3.5;
+      }
+
+      const vel = customVel ? customVel.clone() : new THREE.Vector3(
+        Math.cos(spawnAngle) * (4.5 + Math.random() * 4.0),
+        1.5,
+        Math.sin(spawnAngle) * (4.5 + Math.random() * 4.0)
+      );
+
+      mesh.position.copy(pos);
+      scene.add(mesh);
+
+      physicsBoulders.push({
+        mesh,
+        pos,
+        vel,
+        radius,
+        restitution: 0.44 + Math.random() * 0.14,
+        age: 0,
+        maxAge: 26
+      });
+    }
+
+    /**
+     * Kotak Kayu Fisika Roblox (Crates) yang dapat terdorong & terpental.
+     */
+    function buildPhysicsCrates() {
+      const crateMat = new THREE.MeshStandardMaterial({ map: studCrateTex, roughness: 0.78 });
+      const crateCoords = [
+        [-8.2, 79.0], [-6.7, 79.6], [-7.5, 78.0],
+        [45.5, 25.5], [47.2, 24.5],
+        [36.5, -36.5], [38.2, -35.8], [32.0, -39.0],
+        [5.2, -7.0], [-4.5, -6.5]
+      ];
+
+      crateCoords.forEach(([cx, cz]) => {
+        const size = 1.35;
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), crateMat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        const cy = getTerrainHeight(cx, cz) + size * 0.5;
+        mesh.position.set(cx, cy, cz);
+        scene.add(mesh);
+        physicsCrates.push({
+          mesh,
+          pos: new THREE.Vector3(cx, cy, cz),
+          vel: new THREE.Vector3(),
+          angVel: new THREE.Vector3(),
+          halfSize: size * 0.5
+        });
+      });
+    }
+
+    const _nTmp = new THREE.Vector3();
+    const _rollAxis = new THREE.Vector3();
+    const _qStep = new THREE.Quaternion();
+    let autoBoulderTimer = 2.5;
+
+    function updatePhysicsSimulation(dt) {
+      const GRAVITY = -24.0;
+
+      // Auto-spawn batu fisika berkala di zona tebing agar dunia selalu hidup
+      autoBoulderTimer -= dt;
+      if (autoBoulderTimer <= 0) {
+        spawnPhysicsBoulder();
+        autoBoulderTimer = 4.2 + Math.random() * 2.5;
+      }
+
+      // 1. Update Batu Gelinding & Memantul
+      for (let i = physicsBoulders.length - 1; i >= 0; i--) {
+        const b = physicsBoulders[i];
+        b.age += dt;
+        if (b.age > b.maxAge || b.pos.length() > 155) {
+          scene.remove(b.mesh);
+          physicsBoulders.splice(i, 1);
+          continue;
+        }
+
+        b.vel.y += GRAVITY * dt;
+        b.pos.addScaledVector(b.vel, dt);
+
+        const groundY = getTerrainHeight(b.pos.x, b.pos.z);
+        if (b.pos.y - b.radius < groundY) {
+          b.pos.y = groundY + b.radius;
+          getTerrainNormal(b.pos.x, b.pos.z, _nTmp);
+
+          const vDotN = b.vel.dot(_nTmp);
+          if (vDotN < 0) {
+            // Partikel debu saat benturan keras
+            if (Math.abs(vDotN) > 5.5) {
+              spawnParticleBurst(
+                new THREE.Vector3(b.pos.x, groundY + 0.2, b.pos.z),
+                groundY > 48 ? 0xf8fafc : 0xcbd5e1,
+                10,
+                4.2,
+                -10
+              );
+            }
+            // Pantulan koefisien restitusi
+            b.vel.addScaledVector(_nTmp, -(1 + b.restitution) * vDotN);
+            // Gesekan lereng halus
+            b.vel.multiplyScalar(1 - Math.min(0.4, 0.35 * dt));
+          }
+
+          // Rotasi sudut sinkron sempurna dengan kecepatan translasi (omega = v / r)
+          const horizSpeed = Math.hypot(b.vel.x, b.vel.z);
+          if (horizSpeed > 0.1) {
+            _rollAxis.crossVectors(_nTmp, b.vel).normalize();
+            const omega = (horizSpeed / b.radius) * dt;
+            _qStep.setFromAxisAngle(_rollAxis, omega);
+            b.mesh.quaternion.premultiply(_qStep);
+          }
+        }
+        b.mesh.position.copy(b.pos);
+
+        // Tabrakan Batu dengan Kotak Kayu Fisika
+        for (let c = 0; c < physicsCrates.length; c++) {
+          const cr = physicsCrates[c];
+          const minDist = b.radius + cr.halfSize * 1.15;
+          const dist = b.pos.distanceTo(cr.pos);
+          if (dist < minDist && dist > 0.01) {
+            const pushDir = _capDelta.subVectors(cr.pos, b.pos).normalize();
+            cr.vel.addScaledVector(pushDir, 11.5);
+            cr.vel.y += 5.5;
+            cr.angVel.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+            spawnParticleBurst(cr.pos, 0xd97706, 8, 4.5, -14);
+          }
+        }
+
+        // Tabrakan Batu dengan Karakter saat Mode Eksplorasi WASD
+        if (THEME_CONFIG.playMode && playerPhysics.knockbackTimer <= 0) {
+          const playerCenter = _capClosest.set(playerPhysics.pos.x, playerPhysics.pos.y + 1.7, playerPhysics.pos.z);
+          const distP = b.pos.distanceTo(playerCenter);
+          if (distP < b.radius + 1.05) {
+            const push = _capDelta.subVectors(playerCenter, b.pos).normalize();
+            playerPhysics.vel.x = push.x * 16;
+            playerPhysics.vel.z = push.z * 16;
+            playerPhysics.vel.y = 9.5;
+            playerPhysics.grounded = false;
+            playerPhysics.knockbackTimer = 0.75;
+            spawnParticleBurst(playerCenter, 0xfef08a, 16, 6.0, -14);
+            showToast('💥 Terserempet batu fisika! Jaga keseimbangan!');
+          }
+        }
+      }
+
+      // 2. Update Kotak Kayu Fisika (Gravitasi, Gesekan & Interaksi Player WASD)
+      for (let i = 0; i < physicsCrates.length; i++) {
+        const cr = physicsCrates[i];
+        cr.vel.y += GRAVITY * dt;
+        cr.pos.addScaledVector(cr.vel, dt);
+
+        const gY = getTerrainHeight(cr.pos.x, cr.pos.z);
+        if (cr.pos.y - cr.halfSize < gY) {
+          cr.pos.y = gY + cr.halfSize;
+          if (cr.vel.y < -2.2) {
+            cr.vel.y *= -0.32;
+          } else {
+            cr.vel.y = 0;
+          }
+          cr.vel.x *= Math.max(0, 1 - 4.5 * dt);
+          cr.vel.z *= Math.max(0, 1 - 4.5 * dt);
+          cr.angVel.multiplyScalar(Math.max(0, 1 - 5.0 * dt));
+        }
+
+        // Dorongan karakter pada kotak kayu di mode WASD
+        if (THEME_CONFIG.playMode) {
+          const dx = cr.pos.x - playerPhysics.pos.x;
+          const dz = cr.pos.z - playerPhysics.pos.z;
+          const dy = Math.abs(cr.pos.y - (playerPhysics.pos.y + 1.0));
+          const d = Math.hypot(dx, dz);
+          if (d < cr.halfSize + 0.95 && dy < 1.8 && d > 0.01) {
+            cr.vel.x += (dx / d) * 14 * dt;
+            cr.vel.z += (dz / d) * 14 * dt;
+            cr.vel.y = Math.max(cr.vel.y, 1.8);
+          }
+        }
+
+        cr.mesh.position.copy(cr.pos);
+        cr.mesh.rotation.x += cr.angVel.x * dt;
+        cr.mesh.rotation.y += cr.angVel.y * dt;
+        cr.mesh.rotation.z += cr.angVel.z * dt;
+      }
+
+      // 3. Update Fisika Gelombang Kain Bendera Puncak
+      if (flagClothGeo && flagClothBasePos) {
+        const posArr = flagClothGeo.attributes.position.array;
+        for (let i = 0; i < posArr.length; i += 3) {
+          const bx = flagClothBasePos[i];
+          const by = flagClothBasePos[i + 1];
+          const u = bx / 3.4; // 0 di tiang, 1 di ujung kain bebas
+          const wave = Math.sin(bx * 2.6 - totalTime * 7.2) * 0.34 * u + Math.cos(by * 2.1 - totalTime * 5.0) * 0.08 * u;
+          posArr[i + 2] = wave;
+        }
+        flagClothGeo.attributes.position.needsUpdate = true;
+        flagClothGeo.computeVertexNormals();
+      }
+
+      // 4. Update Ayunan Jembatan Gantung Pos 1 (termasuk lendutan bobot karakter)
+      const charPos = climber.root.position;
+      for (let i = 0; i < bridgePlanks.length; i++) {
+        const pl = bridgePlanks[i];
+        const { basePos, u } = pl.userData;
+        const env = Math.sin(u * Math.PI);
+        const swayY = Math.sin(totalTime * 2.3 + u * Math.PI) * 0.14 * env;
+        const swayRoll = Math.sin(totalTime * 1.9 + u * 2.0) * 0.045 * env;
+        const dChar = Math.hypot(charPos.x - basePos.x, charPos.z - basePos.z);
+        const weightDip = dChar < 3.5 ? (1 - dChar / 3.5) * 0.28 * env : 0;
+
+        pl.position.y = basePos.y + swayY - weightDip;
+        pl.rotation.z = swayRoll;
+      }
+
+      // 5. Update Bara Api Unggun & Awan Kubus
+      if (campfireEmbers) {
+        const pArr = campfireEmbers.geometry.attributes.position.array;
+        const eData = campfireEmbers.userData.emberData;
+        for (let i = 0; i < eData.length; i++) {
+          const e = eData[i];
+          pArr[i * 3 + 1] += e.speed * dt;
+          pArr[i * 3] = e.originX + Math.sin(totalTime * 2.8 + e.phase) * 0.42;
+          pArr[i * 3 + 2] = e.originZ + Math.cos(totalTime * 2.4 + e.phase) * 0.42;
+          if (pArr[i * 3 + 1] > e.originY + 5.2) {
+            pArr[i * 3 + 1] = e.originY;
+          }
+        }
+        campfireEmbers.geometry.attributes.position.needsUpdate = true;
+        if (campfireLight) {
+          campfireLight.intensity = 4.2 + Math.sin(totalTime * 14) * 0.65;
+        }
+      }
+
+      for (let i = 0; i < clouds.length; i++) {
+        clouds[i].position.x += clouds[i].userData.speed * dt;
+        if (clouds[i].position.x > 180) clouds[i].position.x = -180;
+      }
+
+      // 6. Update Partikel Ledakan Debu & Kembang Api
+      for (let i = particleSystems.length - 1; i >= 0; i--) {
+        const ps = particleSystems[i];
+        ps.life -= dt / ps.maxLife;
+        if (ps.life <= 0) {
+          scene.remove(ps.mesh);
+          ps.mesh.geometry.dispose();
+          ps.mesh.material.dispose();
+          particleSystems.splice(i, 1);
+          continue;
+        }
+        const arr = ps.mesh.geometry.attributes.position.array;
+        for (let j = 0; j < ps.vels.length; j++) {
+          ps.vels[j].y += ps.gravity * dt;
+          arr[j * 3] += ps.vels[j].x * dt;
+          arr[j * 3 + 1] += ps.vels[j].y * dt;
+          arr[j * 3 + 2] += ps.vels[j].z * dt;
+        }
+        ps.mesh.geometry.attributes.position.needsUpdate = true;
+        ps.mesh.material.opacity = Math.max(0, ps.life);
+      }
+    }
+
+    /* =========================================================================
+       10. UPDATE MODE SCROLLYTELLING 4 FASE & MODE EKSPLORASI WASD
+       ========================================================================= */
+    const _camTargetPos = new THREE.Vector3();
+    const _camLookTarget = new THREE.Vector3();
+    const _prevTrailPt = new THREE.Vector3();
+    let startJumpBurstDone = false;
+    let summitLandBurstDone = false;
+
+    function updateScrollytellingMode(dt) {
+      // Auto-Scroll lembut bila aktif
+      if (THEME_CONFIG.autoScroll) {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const nextY = window.scrollY + (maxScroll * 0.042 * dt);
+        if (nextY >= maxScroll - 2) {
+          THEME_CONFIG.autoScroll = false;
+          updateAutoScrollBtn();
+        } else {
+          window.scrollTo(0, nextY);
+        }
+      }
+
+      const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      targetProgress = THREE.MathUtils.clamp(window.scrollY / maxScroll, 0, 1);
+      smoothProgress += (targetProgress - smoothProgress) * 0.08;
+
+      const p = smoothProgress;
+      document.getElementById('progress-fill').style.width = (p * 100).toFixed(2) + '%';
+
+      // Sembunyikan hint scroll begitu user mulai mendaki
+      if (p > 0.02) {
+        document.getElementById('scroll-hint').classList.add('hidden');
+      }
+
+      // Pemetaan 4 Fase Koreografi (0.00 - 1.00)
+      let trailU = 0;
+      let isClimbing = false;
+      let isJumping = false;
+      let isPlanting = false;
+      let prepFlourish = 0;
+      let jumpArcY = 0;
+      let phaseLabel = 'Fase 1: Basecamp Lembah Blox';
+
+      if (p < 0.18) {
+        // FASE 1 (0.00 - 0.18): Persiapan Basecamp, Ayunan Kapak Es, Lompatan Start
+        phaseLabel = 'Fase 1: Persiapan Basecamp';
+        if (p < 0.08) {
+          trailU = 0.0;
+          prepFlourish = p / 0.08;
+        } else {
+          const u1 = (p - 0.08) / 0.10;
+          trailU = u1 * 0.16;
+          if (u1 < 0.35) {
+            isJumping = true;
+            jumpArcY = Math.sin((u1 / 0.35) * Math.PI) * 2.2;
+            if (!startJumpBurstDone && u1 > 0.08) {
+              startJumpBurstDone = true;
+              spawnParticleBurst(climber.root.position.clone().add(new THREE.Vector3(0, 0.3, 0)), 0xd6d3d1, 18, 5.2, -12);
+            }
+          }
+        }
+      } else if (p < 0.70) {
+        // FASE 2 (0.18 - 0.70): Map Luas, Jembatan Gantung Pos 1 & Panjat Tebing IK Pos 2
+        const u2 = (p - 0.18) / 0.52;
+        trailU = 0.16 + u2 * 0.56; // 0.16 -> 0.72 pada kurva
+        if (p < 0.42) {
+          phaseLabel = 'Fase 2: Pos 1 Jembatan Gantung';
+        } else if (p < 0.52) {
+          phaseLabel = 'Fase 2: Zona Batu Jatuh';
+        } else {
+          phaseLabel = 'Fase 2: Panjat Tebing IK';
+          isClimbing = true;
+        }
+      } else if (p < 0.90) {
+        // FASE 3 (0.70 - 0.90): Punggungan Salju & Lompatan Parabolik Akhir
+        phaseLabel = 'Fase 3: Punggungan Salju';
+        const u3 = (p - 0.70) / 0.20;
+        trailU = 0.72 + u3 * 0.24; // 0.72 -> 0.96
+        if (u3 > 0.55) {
+          phaseLabel = 'Fase 3: Lompatan Akhir Puncak';
+          const ju = (u3 - 0.55) / 0.45;
+          isJumping = true;
+          jumpArcY = Math.sin(ju * Math.PI) * 4.8;
+          if (ju > 0.92 && !summitLandBurstDone) {
+            summitLandBurstDone = true;
+            spawnParticleBurst(climber.root.position.clone(), 0xf8fafc, 22, 6.2, -12);
+          }
+        }
+      } else {
+        // FASE 4 (0.90 - 1.00): Klimaks Puncak & Tancap Bendera ke Lubang Soket Cekung
+        phaseLabel = 'Fase 4: Puncak Gunung Dermawan!';
+        const u4 = (p - 0.90) / 0.10;
+        trailU = 0.96 + Math.min(1, u4 / 0.45) * 0.04;
+        isPlanting = true;
+
+        // Bendera Puncak muncul dan meluncur masuk tepat ke dalam lubang soket cekung!
+        summitFlagGroup.visible = true;
+        const plantProgress = THREE.MathUtils.clamp((u4 - 0.35) / 0.50, 0, 1);
+        const easedPlant = 1 - Math.pow(1 - plantProgress, 3);
+        // Dari y = PEAK_HEIGHT + 2.8 turun masuk ke dalam soket di y = PEAK_HEIGHT + 0.1
+        summitFlagGroup.position.set(
+          SOCKET_POS.x,
+          THREE.MathUtils.lerp(PEAK_HEIGHT + 2.75, PEAK_HEIGHT + 0.05, easedPlant),
+          SOCKET_POS.z
+        );
+
+        if (plantProgress > 0.88 && !fireworksTriggered) {
+          fireworksTriggered = true;
+          spawnFireworksCelebration();
+          showToast('🏆 Puncak Gunung Dermawan 2.850 MDPL Tercapai!');
+        }
+      }
+
+      if (p < 0.88) {
+        summitFlagGroup.visible = false;
+        fireworksTriggered = false;
+        summitLandBurstDone = false;
+      }
+      if (p < 0.06) {
+        startJumpBurstDone = false;
+      }
+
+      // Evaluasi posisi karakter pada kurva utama
+      const pt = masterTrailCurve.getPointAt(THREE.MathUtils.clamp(trailU, 0, 1));
+      const surf = getWalkableSurface(pt.x, pt.z, totalTime);
+      pt.y = surf.y + jumpArcY;
+      climber.root.position.copy(pt);
+
+      // Arah hadap karakter mengikuti tangent kurva (atau menghadap soket di puncak)
+      if (isPlanting) {
+        const toSocket = new THREE.Vector3().subVectors(SOCKET_POS, pt);
+        climber.root.rotation.y = Math.atan2(toSocket.x, toSocket.z);
+        climber.torso.rotation.x = 0.12;
+      } else if (p < 0.08) {
+        // Di Basecamp (scroll = 0.0): berdiri gagah sedikit serong ke kamera & papan pengumuman
+        climber.root.rotation.y = 0.32 + Math.sin(prepFlourish * Math.PI) * 0.45;
+        climber.torso.rotation.x = 0.0;
+      } else {
+        const tang = masterTrailCurve.getTangentAt(THREE.MathUtils.clamp(trailU, 0, 1));
+        climber.root.rotation.y = Math.atan2(tang.x, tang.z);
+        climber.torso.rotation.x = isClimbing ? 0.42 : (isJumping ? 0.18 : 0.08);
+      }
+
+      // Hitung animasi langkah berdasarkan perubahan posisi
+      const distMoved = pt.distanceTo(_prevTrailPt);
+      _prevTrailPt.copy(pt);
+      const movingFactor = (p > 0.08 && p < 0.945) ? 1.0 : 0.0;
+      const stridePhase = p * 128.0;
+
+      updateClimberIKAndIceAxe(dt, {
+        stridePhase,
+        moveAmp: movingFactor,
+        isClimbing,
+        isJumping,
+        isPlanting,
+        prepFlourish
+      });
+
+      // Sinkronkan posisi awal mode WASD jika user sewaktu-waktu beralih mode
+      playerPhysics.pos.copy(pt);
+      playerPhysics.yaw = climber.root.rotation.y;
+
+      // Update Telemetri HUD
+      const mdpl = Math.round(450 + (Math.max(0, pt.y) / PEAK_HEIGHT) * (2850 - 450));
+      document.getElementById('tele-alt').textContent = mdpl.toLocaleString('id-ID') + ' MDPL';
+      document.getElementById('tele-phase').textContent = phaseLabel;
+
+      // Kamera Sinematik Sesuai Pilihan Selector
+      updateScrollytellingCamera(dt, pt, p, isClimbing, isPlanting);
+    }
+
+    function updateScrollytellingCamera(dt, charPos, p, isClimbing, isPlanting) {
+      if (THEME_CONFIG.cameraMode === 'orbit') {
+        controls.enabled = true;
+        controls.target.lerp(new THREE.Vector3(charPos.x, charPos.y + 2.2, charPos.z), Math.min(1, dt * 6));
+        controls.update();
+        return;
+      }
+
+      controls.enabled = false;
+      const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(climber.root.quaternion);
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(climber.root.quaternion);
+
+      if (THEME_CONFIG.cameraMode === 'overview') {
+        // Sudut lebar panorama memperlihatkan luasnya dunia Gunung Dermawan
+        const ang = p * Math.PI * 1.4 - 0.4;
+        _camTargetPos.set(Math.sin(ang) * 108, 76, Math.cos(ang) * 108 - 5);
+        _camLookTarget.set(0, 26, 5);
+      } else if (THEME_CONFIG.cameraMode === 'hero') {
+        // Hero Cam: dekat & dramatis dari sisi depan-samping karakter
+        if (isPlanting) {
+          // Sudut 45 derajat mendekat menyorot soket lubang cekung & tancap bendera!
+          _camTargetPos.set(SOCKET_POS.x + 5.2, PEAK_HEIGHT + 5.2, SOCKET_POS.z + 5.2);
+          _camLookTarget.set(SOCKET_POS.x, PEAK_HEIGHT + 1.0, SOCKET_POS.z);
+        } else {
+          _camTargetPos.copy(charPos)
+            .addScaledVector(forward, 7.2)
+            .addScaledVector(right, 4.6)
+            .add(new THREE.Vector3(0, 3.6, 0));
+          _camLookTarget.copy(charPos).add(new THREE.Vector3(0, 2.3, 0));
+        }
+      } else {
+        // Action Cam (Default): dinamis mengikuti setiap fase koreografi
+        if (p < 0.08) {
+          // Basecamp: tampilkan karakter, Papan Pengumuman Basecamp, dan menjulangnya Gunung Dermawan!
+          _camTargetPos.set(4.5, 5.4, 91.5);
+          _camLookTarget.set(-0.5, 4.0, 74.0);
+        } else if (isPlanting) {
+          // Klimaks Puncak: kamera sinematik sudut 45 derajat mendekat ke soket cekung & bendera!
+          const zoom = THREE.MathUtils.clamp((p - 0.90) / 0.10, 0, 1);
+          const dist = THREE.MathUtils.lerp(11.5, 6.4, zoom);
+          const elev = THREE.MathUtils.lerp(7.2, 5.4, zoom);
+          _camTargetPos.set(SOCKET_POS.x + dist * 0.72, PEAK_HEIGHT + elev, SOCKET_POS.z + dist * 0.72);
+          _camLookTarget.set(SOCKET_POS.x + 0.6, PEAK_HEIGHT + 1.25, SOCKET_POS.z - 0.5);
+        } else if (isClimbing) {
+          // Sudut samping-belakang memamerkan panjat tebing IK dan pegangan warna-warni
+          _camTargetPos.copy(charPos)
+            .addScaledVector(forward, -9.5)
+            .addScaledVector(right, 6.5)
+            .add(new THREE.Vector3(0, 4.8, 0));
+          _camLookTarget.copy(charPos).add(new THREE.Vector3(0, 2.5, 0));
+        } else {
+          _camTargetPos.copy(charPos)
+            .addScaledVector(forward, -12.5)
+            .addScaledVector(right, 4.2)
+            .add(new THREE.Vector3(0, 6.4, 0));
+          _camLookTarget.copy(charPos).add(new THREE.Vector3(0, 2.4, 0));
+        }
+      }
+
+      // Pastikan kamera tidak pernah menembus permukaan gunung
+      const camGround = getTerrainHeight(_camTargetPos.x, _camTargetPos.z) + 2.2;
+      if (_camTargetPos.y < camGround) _camTargetPos.y = camGround;
+
+      camera.position.lerp(_camTargetPos, Math.min(1, dt * 4.8));
+      controls.target.lerp(_camLookTarget, Math.min(1, dt * 6.5));
+      camera.lookAt(controls.target);
+    }
+
+    /**
+     * Mode Eksplorasi Bebas Karakter Roblox (WASD + Spasi + Fisika Gravitasi & Lereng).
+     */
+    function updatePlayMode(dt) {
+      const moveF = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+      const moveR = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+      const sprint = keys.ShiftLeft || keys.ShiftRight ? 1.48 : 1.0;
+
+      // Arah gerak relatif terhadap kamera
+      const camFwd = new THREE.Vector3();
+      camera.getWorldDirection(camFwd);
+      camFwd.y = 0;
+      camFwd.normalize();
+      const camRight = new THREE.Vector3().crossVectors(camFwd, _up).normalize();
+
+      const moveDir = new THREE.Vector3()
+        .addScaledVector(camFwd, moveF)
+        .addScaledVector(camRight, moveR);
+
+      if (playerPhysics.knockbackTimer > 0) {
+        playerPhysics.knockbackTimer -= dt;
+      }
+
+      const isMoving = moveDir.lengthSq() > 0.01;
+      if (isMoving && playerPhysics.knockbackTimer <= 0.2) {
+        moveDir.normalize();
+        const speed = 13.5 * sprint;
+        playerPhysics.vel.x = THREE.MathUtils.lerp(playerPhysics.vel.x, moveDir.x * speed, Math.min(1, dt * 10));
+        playerPhysics.vel.z = THREE.MathUtils.lerp(playerPhysics.vel.z, moveDir.z * speed, Math.min(1, dt * 10));
+        const targetYaw = Math.atan2(moveDir.x, moveDir.z);
+        // Smooth angular lerp
+        let diff = targetYaw - playerPhysics.yaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        playerPhysics.yaw += diff * Math.min(1, dt * 11);
+      } else {
+        const drag = playerPhysics.grounded ? 9.0 : 1.5;
+        playerPhysics.vel.x *= Math.max(0, 1 - drag * dt);
+        playerPhysics.vel.z *= Math.max(0, 1 - drag * dt);
+      }
+
+      // Coyote time & Lompat
+      if (playerPhysics.grounded) {
+        playerPhysics.coyoteTimer = 0.14;
+      } else {
+        playerPhysics.coyoteTimer -= dt;
+      }
+
+      if (keys.Space && playerPhysics.coyoteTimer > 0) {
+        playerPhysics.vel.y = 13.2;
+        playerPhysics.grounded = false;
+        playerPhysics.coyoteTimer = 0;
+        spawnParticleBurst(playerPhysics.pos.clone(), 0xe2e8f0, 10, 4.0, -12);
+      }
+
+      // Gravitasi
+      playerPhysics.vel.y -= 26.5 * dt;
+
+      // Integrasi posisi + batas map 280x280
+      playerPhysics.pos.addScaledVector(playerPhysics.vel, dt);
+      playerPhysics.pos.x = THREE.MathUtils.clamp(playerPhysics.pos.x, -132, 132);
+      playerPhysics.pos.z = THREE.MathUtils.clamp(playerPhysics.pos.z, -132, 132);
+
+      const surf = getWalkableSurface(playerPhysics.pos.x, playerPhysics.pos.z, totalTime);
+      if (playerPhysics.pos.y <= surf.y) {
+        playerPhysics.pos.y = surf.y;
+        playerPhysics.vel.y = 0;
+        playerPhysics.grounded = true;
+      } else {
+        playerPhysics.grounded = false;
+      }
+
+      // Deteksi kemiringan tebing untuk animasi memanjat
+      getTerrainNormal(playerPhysics.pos.x, playerPhysics.pos.z, _nTmp);
+      const slopeSteep = (!surf.onBridge && _nTmp.y < 0.72 && isMoving);
+
+      // Update transform & IK karakter
+      climber.root.position.copy(playerPhysics.pos);
+      climber.root.rotation.y = playerPhysics.yaw;
+      climber.torso.rotation.x = slopeSteep ? 0.38 : (isMoving ? 0.1 : 0);
+
+      const hSpeed = Math.hypot(playerPhysics.vel.x, playerPhysics.vel.z);
+      playerPhysics.stridePhase += hSpeed * dt * 1.15;
+
+      updateClimberIKAndIceAxe(dt, {
+        stridePhase: playerPhysics.stridePhase,
+        moveAmp: THREE.MathUtils.clamp(hSpeed / 10, 0, 1),
+        isClimbing: slopeSteep,
+        isJumping: !playerPhysics.grounded,
+        isPlanting: false,
+        prepFlourish: 0
+      });
+
+      // Cek apakah mencapai Puncak Gunung Dermawan di Mode WASD!
+      if (playerPhysics.pos.distanceTo(SOCKET_POS) < 5.0 && !fireworksTriggered) {
+        fireworksTriggered = true;
+        summitFlagGroup.visible = true;
+        summitFlagGroup.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.05, SOCKET_POS.z);
+        spawnFireworksCelebration();
+        showToast('🎉 Selamat! Kamu menaklukkan Puncak Gunung Dermawan di Mode WASD!');
+      }
+
+      // Telemetri HUD
+      const mdpl = Math.round(450 + (Math.max(0, playerPhysics.pos.y) / PEAK_HEIGHT) * (2850 - 450));
+      document.getElementById('tele-alt').textContent = mdpl.toLocaleString('id-ID') + ' MDPL';
+      document.getElementById('tele-phase').textContent = surf.onBridge
+        ? 'Mode WASD: Jembatan Gantung'
+        : (mdpl > 2700 ? 'Mode WASD: Puncak Gunung Dermawan!' : 'Mode Eksplorasi WASD');
+
+      // Kamera mengikuti karakter + bisa diputar bebas via OrbitControls
+      controls.enabled = true;
+      const desiredTarget = new THREE.Vector3(playerPhysics.pos.x, playerPhysics.pos.y + 2.4, playerPhysics.pos.z);
+      const deltaTarget = new THREE.Vector3().subVectors(desiredTarget, controls.target);
+      camera.position.addScaledVector(deltaTarget, Math.min(1, dt * 7));
+      controls.target.lerp(desiredTarget, Math.min(1, dt * 7));
+
+      const camFloor = getTerrainHeight(camera.position.x, camera.position.z) + 1.8;
+      if (camera.position.y < camFloor) camera.position.y = camFloor;
+      controls.update();
+    }
+
+    /* =========================================================================
+       11. INTERAKSI RAYCASTER (KLIK PAPAN 3D) & EVENT HANDLERS UI
+       ========================================================================= */
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let pointerDownXY = { x: 0, y: 0 };
+
+    function getPointerHits(clientX, clientY) {
+      pointer.x = (clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      return raycaster.intersectObjects(clickableSignMeshes, false);
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      pointerDownXY.x = e.clientX;
+      pointerDownXY.y = e.clientY;
+      canvas.classList.add('dragging');
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      const hits = getPointerHits(e.clientX, e.clientY);
+      if (hits.length > 0) {
+        canvas.classList.add('pointer-hover');
+      } else {
+        canvas.classList.remove('pointer-hover');
+      }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      canvas.classList.remove('dragging');
+      const moved = Math.hypot(e.clientX - pointerDownXY.x, e.clientY - pointerDownXY.y);
+      if (moved < 8) {
+        const hits = getPointerHits(e.clientX, e.clientY);
+        if (hits.length > 0 && hits[0].object.userData.readable) {
+          openBoardModal(hits[0].object.userData.readable);
+        }
+      }
+    });
+
+    // Modal Pembacaan Papan 3D
+    const modalBackdrop = document.getElementById('board-modal-backdrop');
+    function openBoardModal(data) {
+      document.getElementById('modal-tag').textContent = data.type;
+      document.getElementById('modal-elev').textContent = data.elevation || '';
+      document.getElementById('modal-title').textContent = data.title;
+      const txt = document.getElementById('modal-text');
+      const ul = document.getElementById('modal-body');
+      ul.innerHTML = '';
+      if (data.fullText) {
+        txt.textContent = data.fullText;
+        txt.style.display = '';
+        ul.style.display = 'none';
+      } else {
+        txt.style.display = 'none';
+        ul.style.display = '';
+        (data.lines || []).forEach(line => {
+          const li = document.createElement('li');
+          li.textContent = line;
+          ul.appendChild(li);
+        });
+      }
+      const link = document.getElementById('modal-link');
+      if (data.url) {
+        link.href = data.url;
+        link.textContent = data.label || 'Buka';
+        link.style.display = '';
+      } else {
+        link.style.display = 'none';
+      }
+      modalBackdrop.classList.add('open');
+    }
+
+    document.getElementById('modal-close').addEventListener('click', () => {
+      modalBackdrop.classList.remove('open');
+    });
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) modalBackdrop.classList.remove('open');
+    });
+
+    // Toast Notifikasi
+    let toastTimeout = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast-msg');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    // Kontrol Pill Atas
+    const camSelect = document.getElementById('cam-select');
+    camSelect.addEventListener('change', (e) => {
+      THEME_CONFIG.cameraMode = e.target.value;
+      controls.enableZoom = (THEME_CONFIG.cameraMode === 'orbit' || THEME_CONFIG.playMode);
+      showToast('Kamera: ' + e.target.options[e.target.selectedIndex].text);
+    });
+
+    const btnAutoScroll = document.getElementById('btn-autoscroll');
+    function updateAutoScrollBtn() {
+      btnAutoScroll.textContent = THEME_CONFIG.autoScroll ? '⏸ Jeda Scroll' : '▶ Auto-Scroll';
+      btnAutoScroll.classList.toggle('active', THEME_CONFIG.autoScroll);
+    }
+    btnAutoScroll.addEventListener('click', () => {
+      if (THEME_CONFIG.playMode) togglePlayMode(false);
+      THEME_CONFIG.autoScroll = !THEME_CONFIG.autoScroll;
+      updateAutoScrollBtn();
+    });
+
+    const btnPlayMode = document.getElementById('btn-playmode');
+    const touchControls = document.getElementById('touch-controls');
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (isTouchDevice) touchControls.classList.add('touch-visible');
+
+    function togglePlayMode(forceState = null) {
+      THEME_CONFIG.playMode = forceState !== null ? forceState : !THEME_CONFIG.playMode;
+      document.body.classList.toggle('play-mode', THEME_CONFIG.playMode);
+      btnPlayMode.classList.toggle('play-active', THEME_CONFIG.playMode);
+      btnPlayMode.textContent = THEME_CONFIG.playMode ? '📜 Mode Scroll' : '🎮 Mainkan (WASD)';
+      controls.enableZoom = THEME_CONFIG.playMode || (THEME_CONFIG.cameraMode === 'orbit');
+
+      if (THEME_CONFIG.playMode) {
+        THEME_CONFIG.autoScroll = false;
+        updateAutoScrollBtn();
+        document.getElementById('scroll-hint').classList.add('hidden');
+        // Tempatkan kamera tepat di belakang karakter (lebih jauh di layar tegak)
+        const isPortrait = window.innerWidth < window.innerHeight;
+        const camDist = isPortrait ? 17 : 11;
+        const camH = isPortrait ? 7.5 : 5.8;
+        const back = new THREE.Vector3(0, 0, -1).applyAxisAngle(_up, playerPhysics.yaw);
+        camera.position.copy(playerPhysics.pos).addScaledVector(back, camDist).add(new THREE.Vector3(0, camH, 0));
+        controls.target.copy(playerPhysics.pos).add(new THREE.Vector3(0, 2.2, 0));
+        showToast('Mode WASD Aktif: WASD gerak • Spasi lompat • Shift lari • Drag putar kamera');
+      } else {
+        showToast('Kembali ke Mode Scrollytelling 4 Fase');
+      }
+    }
+    btnPlayMode.addEventListener('click', () => togglePlayMode());
+
+    // Studio Drawer
+    const studioDrawer = document.getElementById('studio-drawer');
+    const btnStudio = document.getElementById('btn-studio');
+    btnStudio.addEventListener('click', () => {
+      const open = studioDrawer.classList.toggle('open');
+      btnStudio.classList.toggle('active', open);
+    });
+    document.getElementById('btn-close-studio').addEventListener('click', () => {
+      studioDrawer.classList.remove('open');
+      btnStudio.classList.remove('active');
+    });
+
+    function bindChipGroup(groupId, onSelect) {
+      const container = document.getElementById(groupId);
+      container.querySelectorAll('.chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          container.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          onSelect(btn.dataset.val);
+        });
+      });
+    }
+    bindChipGroup('lighting-group', (val) => {
+      applyLightingPreset(val);
+      showToast('Pencahayaan diubah ke ' + val.toUpperCase());
+    });
+    bindChipGroup('outfit-group', (val) => {
+      applyOutfitPreset(val);
+      showToast('Kostum Roblox diperbarui!');
+    });
+    bindChipGroup('headgear-group', (val) => {
+      applyHeadgearPreset(val);
+      showToast('Headgear diperbarui!');
+    });
+
+    document.getElementById('btn-spawn-boulder').addEventListener('click', () => {
+      // Jatuhkan 3 batu fisika sekaligus dari punggungan atas gunung
+      for (let i = 0; i < 3; i++) {
+        const ang = (-0.65 + (i - 1) * 0.35);
+        const origin = new THREE.Vector3(
+          PEAK_X + Math.cos(ang) * 15.0,
+          PEAK_HEIGHT - 1.5,
+          PEAK_Z + Math.sin(ang) * 15.0
+        );
+        const vel = new THREE.Vector3(Math.cos(ang) * 9.5, 3.0, Math.sin(ang) * 9.5);
+        spawnPhysicsBoulder(origin, vel);
+      }
+      showToast('🪨 3 Batu Fisika dijatuhkan dari lereng puncak!');
+    });
+
+    // Event Keyboard & Kontrol Sentuh WASD
+    window.addEventListener('keydown', (e) => {
+      if (e.code in keys) {
+        keys[e.code] = true;
+        if (THEME_CONFIG.playMode && (e.code === 'Space' || e.code.startsWith('Arrow'))) {
+          e.preventDefault();
+        }
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code in keys) keys[e.code] = false;
+    });
+
+    document.querySelectorAll('#touch-controls [data-key]').forEach(btn => {
+      const code = btn.dataset.key;
+      const press = (e) => { e.preventDefault(); keys[code] = true; btn.classList.add('pressed'); };
+      const release = (e) => { e.preventDefault(); keys[code] = false; btn.classList.remove('pressed'); };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointercancel', release);
+      btn.addEventListener('pointerleave', release);
+    });
+
+    // Responsif Resize Window
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* =========================================================================
+       12. BANGUN DUNIA & LOOP ANIMASI UTAMA (60FPS)
+       ========================================================================= */
+    function initWorld() {
+      buildTerrainAndBaseplate();
+      buildDistantHorizonAndClouds();
+      buildBasecamp();
+      buildPos1SuspensionBridge();
+      buildPos2ClimbingWall();
+      buildSummitAndRecessedSocket();
+      buildAllBoardsAndSignposts();
+      buildGlowingClimbingTrail();
+      buildRobloxClimber();
+      buildPhysicsCrates();
+
+      // Spawn 3 batu awal agar fisika langsung terlihat hidup
+      spawnPhysicsBoulder();
+      spawnPhysicsBoulder();
+      applyLightingPreset(THEME_CONFIG.lighting);
+    }
+
+    function animate(timestamp) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, Math.max(0.001, (timestamp - lastTimestamp) / 1000 || 0.016));
+      lastTimestamp = timestamp;
+      totalTime += dt;
+
+      updatePhysicsSimulation(dt);
+
+      if (THEME_CONFIG.playMode) {
+        updatePlayMode(dt);
+      } else {
+        updateScrollytellingMode(dt);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', () => {
+      try {
+        initWorld();
+        lastTimestamp = performance.now();
+        requestAnimationFrame(animate);
+        // Dunia Dermawan dibuka langsung dalam Mode Mainkan (WASD)
+        togglePlayMode(true);
+        // Hook untuk pengujian (tidak memengaruhi tampilan)
+        window.MOUNTBLOX = {
+          ready: true,
+          playMode: () => THEME_CONFIG.playMode,
+          playerPos: () => playerPhysics.pos.toArray(),
+          boardTitles: () => clickableSignMeshes.map(mm => mm.userData.readable && mm.userData.readable.title).filter(Boolean),
+          boardPos: (title) => {
+            const m = clickableSignMeshes.find(mm => mm.userData.readable && mm.userData.readable.title === title);
+            if (!m) return null;
+            const v = new THREE.Vector3(); m.getWorldPosition(v); return [v.x, v.y, v.z];
+          },
+          project: (x, y, z) => {
+            const v = new THREE.Vector3(x, y, z).project(camera);
+            return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
+          },
+          openBoard: (title) => {
+            const m = clickableSignMeshes.find(mm => mm.userData.readable && mm.userData.readable.title === title);
+            if (!m) return false;
+            openBoardModal(m.userData.readable); return true;
+          }
+        };
+      } catch (err) {
+        console.error('Gagal menginisialisasi Gunung Dermawan 3D:', err);
+        showToast('Terjadi kesalahan memuat WebGL 3D. Silakan muat ulang.');
+      }
+    });
+  </script>
 </body>
 </html>
