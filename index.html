@@ -31,6 +31,16 @@ header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:c
 #panel .go.hide{display:none}
 #panel.hide{display:none}
 .pclose{position:absolute;top:10px;right:12px;border:0;background:#eef2f7;color:#3d4a6b;border-radius:50%;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer;font-family:inherit}
+.dpad{position:fixed;left:14px;bottom:16px;z-index:20;display:none;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px;touch-action:none}
+.dpad button{border:1px solid rgba(61,74,107,.3);background:rgba(255,255,255,.88);color:#3d4a6b;border-radius:16px;font-size:20px;font-family:inherit;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent}
+.dpad button:active{background:#ffe9b0}
+.dpad button[data-d="up"]{grid-column:2;grid-row:1}
+.dpad button[data-d="left"]{grid-column:1;grid-row:2}
+.dpad button[data-d="right"]{grid-column:3;grid-row:2}
+.dpad button[data-d="down"]{grid-column:2;grid-row:3}
+.dpad button[data-d="jump"]{grid-column:2;grid-row:2}
+.toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(61,74,107,.93);color:#fff;padding:10px 18px;border-radius:999px;font-size:15px;font-weight:600;white-space:nowrap}
+#toast.hide{display:none}
 @media(max-width:640px){
   .links{display:none}
   .brand{font-size:16px}
@@ -49,6 +59,14 @@ header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:c
   </div>
 </header>
 <div class="hint" id="hint">Ketuk tangga / pos &mdash; karakter mendaki ke sana</div>
+<div class="dpad" id="dpad">
+  <button data-d="up" aria-label="Naik">&#9650;</button>
+  <button data-d="left" aria-label="Kiri">&#9664;</button>
+  <button data-d="right" aria-label="Kanan">&#9654;</button>
+  <button data-d="down" aria-label="Turun">&#9660;</button>
+  <button data-d="jump" aria-label="Lompat">&#10548;</button>
+</div>
+<div class="toast hide" id="toast"></div>
 <div class="world active" id="world1"><canvas id="c1"></canvas></div>
 <section id="panel" class="hide">
   <button id="pClose" class="pclose" aria-label="Tutup">×</button>
@@ -76,7 +94,7 @@ const INFO={
   sheet:{title:'Sheet-manager',text:'Buka backup SQLite ERP sebagai grid ala Google Sheets: bisa edit, simpan kembali ke SQLite, dan ekspor JSON + dump MySQL. Dibangun dengan PHP.',url:'https://github.com/Dermawanpurba/Sheet-manager',label:'Lihat di GitHub'},
   openidm:{title:'open-idm',text:'Alternatif Internet Download Manager yang open source. Unduh file lebih cepat, gratis, dan kodenya terbuka untuk siapa saja.',url:'https://github.com/Dermawanpurba/open-idm',label:'Lihat di GitHub'}
 };
-function showInfo(key){
+function showInfo(key,zoomIn){
   const d=INFO[key]; if(!d) return;
   $('pTitle').textContent=d.title;
   $('pText').textContent=d.text;
@@ -84,8 +102,14 @@ function showInfo(key){
   if(d.url){a.href=d.url;a.textContent=d.label||'Buka';a.classList.remove('hide');}
   else a.classList.add('hide');
   $('panel').classList.remove('hide');
+  if(zoomIn&&orbit1)orbit1.setRadius(13);
+  updateDpad();
 }
-function hidePanel(){ $('panel').classList.add('hide'); }
+function hidePanel(){
+  $('panel').classList.add('hide');
+  if(orbit1){const b=(innerWidth/innerHeight<0.75)?0.9:1;orbit1.setRadius(24*b);}
+  updateDpad();
+}
 $('pClose').addEventListener('click', hidePanel);
 
 /* ---------- helper 3D ---------- */
@@ -105,6 +129,37 @@ function labelSprite(text,bg,fg){
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
   sp.scale.set(3.4,0.85,1);return sp;
 }
+function noticeBoard(key){
+  const d=INFO[key];if(!d)return new THREE.Group();
+  const c=document.createElement('canvas');c.width=512;c.height=352;
+  const g=c.getContext('2d');
+  g.fillStyle='#fff8ec';g.fillRect(0,0,512,352);
+  g.strokeStyle='#8a5a3b';g.lineWidth=12;g.strokeRect(6,6,500,340);
+  g.fillStyle='#3d4a6b';g.font='800 42px "Baloo 2", system-ui, sans-serif';
+  g.textAlign='center';g.textBaseline='top';
+  g.fillText(d.title,256,22);
+  g.fillStyle='#4a5568';g.font='27px system-ui, sans-serif';g.textAlign='left';
+  const words=d.text.split(' ');
+  let line='',y=86;
+  for(let i=0;i<words.length;i++){
+    const t=line?line+' '+words[i]:words[i];
+    if(g.measureText(t).width>452&&line){g.fillText(line,30,y);line=words[i];y+=34;if(y>300)break;}
+    else line=t;
+  }
+  if(line&&y<=300)g.fillText(line,30,y);
+  const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;
+  const grp=new THREE.Group();
+  grp.add(box(2.9,2.3,0.12,0x8a5a3b,0,1.6,0));
+  const paper=new THREE.Mesh(new THREE.PlaneGeometry(2.66,1.83),new THREE.MeshBasicMaterial({map:tex}));
+  paper.position.set(0,1.6,0.07);grp.add(paper);
+  const texBack=new THREE.CanvasTexture(c);texBack.anisotropy=4;
+  const paperBack=new THREE.Mesh(new THREE.PlaneGeometry(2.66,1.83),new THREE.MeshBasicMaterial({map:texBack}));
+  paperBack.position.set(0,1.6,-0.07);paperBack.rotation.y=Math.PI;grp.add(paperBack);
+  grp.add(box(0.14,0.9,0.14,0x8a5a3b,-1.15,0.45,0));
+  grp.add(box(0.14,0.9,0.14,0x8a5a3b,1.15,0.45,0));
+  grp.userData.key=key;
+  return grp;
+}
 function glowSprite(color){
   const c=document.createElement('canvas');c.width=128;c.height=128;
   const g=c.getContext('2d');
@@ -118,7 +173,7 @@ function glowSprite(color){
 
 /* ---------- orbit seret + zoom + ketuk ---------- */
 function createOrbit(canvas,camera,target,opts){
-  let theta=opts.theta||0.6,phi=opts.phi||1.05,radius=opts.radius||15;
+  let theta=(opts.theta!==undefined?opts.theta:0.6),phi=opts.phi||1.05,radius=opts.radius||15;
   const baseR=radius,minR=opts.minR||9,maxR=opts.maxR||24,minPhi=0.4,maxPhi=1.35;
   const pointers=new Map();
   let lx=0,ly=0,moved=0,downT=0,pinchD=0;
@@ -164,7 +219,7 @@ function createOrbit(canvas,camera,target,opts){
   canvas.addEventListener('pointercancel',endPointer);
   canvas.addEventListener('wheel',function(e){e.preventDefault();radius*=(1+Math.sign(e.deltaY)*0.08);apply();},{passive:false});
   apply();
-  return {apply:apply,setRadius:function(r){radius=r;apply();},baseR:baseR,getTheta:function(){return theta;}};
+  return {apply:apply,setRadius:function(r){radius=r;apply();},addTheta:function(d){theta+=d;apply();},baseR:baseR,getTheta:function(){return theta;}};
 }
 const _rc=new THREE.Raycaster();
 function pick(e,canvas,camera,roots){
@@ -236,7 +291,7 @@ function buildAvatar(){
 }
 
 /* ---------- DUNIA 1: pulauku (branding / CV) ---------- */
-const W1={clickables:[],clouds:[],landings:[],trees:[],steps:[],path:[]};
+const W1={clickables:[],clouds:[],landings:[],trees:[],steps:[],path:[],solids:[]};
 let renderer1,scene1,camera1,avatar;
 function buildWorld1(){
   scene1=new THREE.Scene();
@@ -275,7 +330,7 @@ function buildWorld1(){
   }
   W1.path=[];
   for(let i=0;i<=MT.STEPS;i++)W1.path.push(pathPoint(i));
-  W1.path[MT.STEPS]={x:0,y:7.0,z:0,th:Math.PI*4,r:0};
+  W1.path[MT.STEPS]={x:0,y:7.0,z:2.2,th:Math.PI*4,r:0};
   // badan gunung: gradasi hijau -> coklat -> batu -> salju
   const gradTex=(()=>{const c=document.createElement('canvas');c.width=16;c.height=256;const g=c.getContext('2d');
     const gr=g.createLinearGradient(0,256,0,0);
@@ -323,6 +378,14 @@ function buildWorld1(){
       const sp=labelSprite(L.label);sp.scale.set(2.7,0.68,1);sp.position.set(0,2.4,0);
       sp.userData.baseY=2.4;hut.add(sp);
       scene1.add(hut);W1.clickables.push(hut);W1.landings.push(sp);
+      W1.solids.push({x:hr*Math.sin(p.th),z:hr*Math.cos(p.th),r:1.0});
+      const br=p.r+3.1,bhy=coneY(br);
+      const board=noticeBoard(L.key);
+      board.position.set(br*Math.sin(p.th),bhy,br*Math.cos(p.th));
+      board.rotation.y=p.th+Math.PI;
+      board.userData.pathIdx=i;
+      scene1.add(board);W1.clickables.push(board);
+      W1.solids.push({x:br*Math.sin(p.th),z:br*Math.cos(p.th),r:0.9});
     }
   }
   // puncak: platform salju + roket + bendera
@@ -348,6 +411,10 @@ function buildWorld1(){
   const spTop=labelSprite('Puncak');spTop.scale.set(2.7,0.68,1);spTop.position.set(0,10.2,0);
   spTop.userData.baseY=10.2;summit.add(spTop);W1.landings.push(spTop);
   scene1.add(summit);W1.clickables.push(summit);
+  const boardTop=noticeBoard('home');
+  boardTop.position.set(-1.8,7.0,-1.8);boardTop.rotation.y=Math.PI/4;
+  boardTop.userData.pathIdx=MT.STEPS;
+  scene1.add(boardTop);W1.clickables.push(boardTop);
   // base camp: tenda + api unggun
   const camp=new THREE.Group();camp.position.set(-14,0,7);
   const tent=new THREE.Mesh(new THREE.ConeGeometry(1.3,1.5,4),mat(0xff8f6b));
@@ -374,13 +441,14 @@ function buildWorld1(){
   });
   scene1.add(pond);
   W1.baseObstacles=[{x:14,z:11,r:2.6},{x:-14,z:7,r:1.8}];
+  W1.baseObstacles.forEach(function(ob){W1.solids.push(ob);});
   // pepohonan di tepi pulau
   function tree(x,z,s){
     const t=new THREE.Group();t.position.set(x,0,z);t.scale.setScalar(s||1);
     t.add(box(0.34,1.1,0.34,0xb07a4a,0,0.55,0));
     t.add(box(1.6,1.2,1.6,0x4b974b,0,1.7,0));
     t.add(box(1.1,0.8,1.1,0x63c76a,0,2.6,0));
-    scene1.add(t);W1.trees.push(t);return t;
+    scene1.add(t);W1.trees.push(t);W1.solids.push({x:x,z:z,r:0.7});return t;
   }
   tree(-19,-6,1.1);tree(19,4,1.2);tree(-3,-19,1);tree(8,19,1.05);tree(-12,-16,0.95);tree(18,-9,1);tree(-18,11,1.1);tree(5,-19,0.9);
   // bunga-bunga
@@ -401,6 +469,7 @@ function buildWorld1(){
   // batu & semak di tepi
   [[-18,14],[17,13],[-6,19],[14,-17]].forEach(function(p,i){
     const r=ball(0.4+i*0.08,0x9aa5b1,p[0],0.2,p[1]);r.scale.set(1,0.7,1);scene1.add(r);
+    W1.solids.push({x:p[0],z:p[1],r:0.6});
   });
   [[-16,-16],[16,-15],[0,19]].forEach(function(p){
     const b=ball(0.6,0x6ec98a,p[0],0.35,p[1]);b.scale.set(1,0.7,1);scene1.add(b);
@@ -450,8 +519,33 @@ function buildWorld1(){
 /* ---------- avatar mendaki ---------- */
 const WALK_SPEED=2.6,CLIMB_SPEED=4.2;
 let walkTarget=null,walkPhase=0,pendingInfo=null,pathTarget=null,pathPos=0,baseLeg=null,onPath=true;
+let avY=0.2,vy=0,grounded=true,falling=false;
+let toastTimer=null;
+function showToast(msg){
+  const el=$('toast');el.textContent=msg;el.classList.remove('hide');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.classList.add('hide');},2600);
+}
+function doJump(){if(grounded&&!falling){vy=6.5;grounded=false;}}
+function respawn(){
+  falling=false;grounded=true;vy=0;avY=0.2;
+  pathPos=0;pathTarget=null;walkTarget=null;baseLeg=null;pendingInfo=null;onPath=true;
+  avatar.group.position.set(0,0.2,12.6);
+  W1.target.set(0,1.4,12.6);
+  hidePanel();
+  showToast('Jatuh dari pulau! Kembali ke base camp.');
+}
+function collideSolids(){
+  const p=avatar.group.position;
+  for(let i=0;i<W1.solids.length;i++){
+    const s=W1.solids[i];
+    const dx=p.x-s.x,dz=p.z-s.z;
+    const d=Math.hypot(dx,dz),min=s.r+0.5;
+    if(d<min&&d>0.001){const k=min/d;p.x=s.x+dx*k;p.z=s.z+dz*k;}
+  }
+}
 const KEYS={};
-window.addEventListener('keydown',function(e){KEYS[e.key.toLowerCase()]=true;});
+window.addEventListener('keydown',function(e){if(e.code==='Space'){e.preventDefault();doJump();return;}KEYS[e.key.toLowerCase()]=true;});
 window.addEventListener('keyup',function(e){KEYS[e.key.toLowerCase()]=false;});
 function groundPoint(e,canvas,camera){
   const r=canvas.getBoundingClientRect();
@@ -504,14 +598,12 @@ function walkToPath(idx,infoKey){
 }
 function walkToBase(x,z){
   let d=Math.hypot(x,z);
-  if(d>18.5){x*=18.5/d;z*=18.5/d;}
-  d=Math.hypot(x,z);
   if(d<12.6&&d>0.001){x*=12.6/d;z*=12.6/d;}
-  W1.baseObstacles.forEach(function(ob){
-    const dx=x-ob.x,dz=z-ob.z,dd=Math.hypot(dx,dz);
-    if(dd<ob.r){
-      if(dd<=0.001){x=ob.x+ob.r;z=ob.z;}
-      else{x=ob.x+dx/dd*ob.r;z=ob.z+dz/dd*ob.r;}
+  W1.solids.forEach(function(ob){
+    const dx=x-ob.x,dz=z-ob.z,dd=Math.hypot(dx,dz),min=ob.r+0.6;
+    if(dd<min){
+      if(dd<=0.001){x=ob.x+min;z=ob.z;}
+      else{x=ob.x+dx/dd*min;z=ob.z+dz/dd*min;}
     }
   });
   pendingInfo=null;
@@ -530,10 +622,11 @@ function resizeActive(){
   if(renderer1){
     renderer1.setSize(w,h,false);
     camera1.aspect=w/h;camera1.updateProjectionMatrix();
-    if(orbit1)orbit1.setRadius(24*boost);
+    if(orbit1&&$('panel').classList.contains('hide'))orbit1.setRadius(24*boost);
     if(avatar)avatar.group.scale.setScalar((w/h<0.75)?1.6:1.25);
   }
-  $('hint').textContent=(w<640)?'Ketuk tangga / pos — karakter mendaki ke sana':'Ketuk tangga / pos: karakter mendaki ke sana \u2022 W/S naik-turun \u2022 Seret untuk memutar \u2022 Cubit / scroll untuk zoom';
+  $('hint').textContent=(w<640)?'Ketuk tangga / pos \u2022 DPad untuk jalan':'Ketuk tangga / pos: karakter mendaki ke sana \u2022 W/S naik-turun \u2022 Seret untuk memutar \u2022 Cubit / scroll untuk zoom';
+  updateDpad();
 }
 window.addEventListener('resize',resizeActive);
 
@@ -551,6 +644,9 @@ function tick(){
     avatar.head.rotation.z=Math.sin(waveT*6)*0.08*k;
     if(waveT>1.5){waveT=-1;avatar.armR.rotation.z=0;avatar.head.rotation.z=0;}
   }
+  // DPad: putar kamera
+  if(DKEYS.left)orbit1.addTheta(dt*1.5);
+  if(DKEYS.right)orbit1.addTheta(-dt*1.5);
   // bergerak: mendaki (path), jalan di base camp, atau WASD
   let mv=null;
   if(pathTarget!==null){
@@ -559,7 +655,7 @@ function tick(){
       pathPos=pathTarget;
       const done=pathTarget;pathTarget=null;
       if(done===0&&baseLeg){walkTarget={x:baseLeg.x,z:baseLeg.z};baseLeg=null;onPath=false;}
-      else if(pendingInfo){showInfo(pendingInfo);pendingInfo=null;}
+      else if(pendingInfo){showInfo(pendingInfo,true);pendingInfo=null;}
     }else{
       const step=CLIMB_SPEED*dt/2.0;
       const np=pathPos+dir*Math.min(step,Math.abs(pathTarget-pathPos));
@@ -576,19 +672,20 @@ function tick(){
   }else{
     const th=orbit1?orbit1.getTheta():0;
     if(onPath){
-      if(KEYS['w']||KEYS['arrowup']){pathTarget=Math.min(W1.path.length-1,Math.floor(pathPos)+1);pendingInfo=null;}
-      else if(KEYS['s']||KEYS['arrowdown']){pathTarget=Math.max(0,Math.ceil(pathPos)-1);pendingInfo=null;}
+      if(KEYS['w']||KEYS['arrowup']||DKEYS.up){pathTarget=Math.min(W1.path.length-1,Math.floor(pathPos)+1);pendingInfo=null;}
+      else if(KEYS['s']||KEYS['arrowdown']||DKEYS.down){pathTarget=Math.max(0,Math.ceil(pathPos)-1);pendingInfo=null;}
     }else{
       const fx=-Math.sin(th),fz=-Math.cos(th),rx=-fz,rz=fx;
       let kx=0,kz=0;
-      if(KEYS['w']||KEYS['arrowup']){kx+=fx;kz+=fz;}
-      if(KEYS['s']||KEYS['arrowdown']){kx-=fx;kz-=fz;}
+      if(KEYS['w']||KEYS['arrowup']||DKEYS.up){kx+=fx;kz+=fz;}
+      if(KEYS['s']||KEYS['arrowdown']||DKEYS.down){kx-=fx;kz-=fz;}
       if(KEYS['d']||KEYS['arrowright']){kx+=rx;kz+=rz;}
       if(KEYS['a']||KEYS['arrowleft']){kx-=rx;kz-=rz;}
       const kl=Math.hypot(kx,kz);
       if(kl>0.01){mv={x:kx/kl,z:kz/kl,step:WALK_SPEED*dt};pendingInfo=null;}
     }
   }
+  if(falling)mv=null;
   const groundY=onPath?pathPosToVec(pathPos).y:0;
   if(mv){
     const targetRot=Math.atan2(mv.x,mv.z);
@@ -601,7 +698,11 @@ function tick(){
     if(!onPath){
       const dd=Math.hypot(avatar.group.position.x,avatar.group.position.z);
       if(dd<12.6&&dd>0.001){avatar.group.position.x*=12.6/dd;avatar.group.position.z*=12.6/dd;}
-      else if(dd>18.5){avatar.group.position.x*=18.5/dd;avatar.group.position.z*=18.5/dd;}
+      collideSolids();
+      if(!falling&&Math.hypot(avatar.group.position.x,avatar.group.position.z)>20){
+        falling=true;grounded=false;vy=0;
+        walkTarget=null;pathTarget=null;baseLeg=null;pendingInfo=null;
+      }
     }
     walkPhase+=mv.step*4.2;
     const sw=Math.sin(walkPhase);
@@ -609,14 +710,23 @@ function tick(){
     avatar.legR.rotation.x=-sw*0.55;
     avatar.armL.rotation.x=-sw*0.4;
     avatar.armR.rotation.x=sw*0.4;
-    avatar.group.position.y=groundY+Math.sin(t*2)*0.05+Math.abs(Math.cos(walkPhase))*0.07+jump;
   }else{
     avatar.legL.rotation.x*=0.8;
     avatar.legR.rotation.x*=0.8;
     avatar.armL.rotation.x*=0.8;
     avatar.armR.rotation.x*=0.8;
-    avatar.group.position.y=groundY+Math.sin(t*2)*0.05+jump;
   }
+  // fisika vertikal: lompat + jatuh
+  if(falling){
+    vy+=-14*dt;avY+=vy*dt;
+    if(avY<-12)respawn();
+  }else if(!grounded){
+    vy+=-14*dt;avY+=vy*dt;
+    if(avY<=groundY){avY=groundY;vy=0;grounded=true;}
+  }else{
+    avY=groundY;
+  }
+  avatar.group.position.y=avY+Math.sin(t*2)*0.05+(mv?Math.abs(Math.cos(walkPhase))*0.07:0)+jump;
   blinkT+=dt;
   if(blinkT>nextBlink){
     const b=blinkT-nextBlink;
@@ -655,12 +765,36 @@ function tick(){
   renderer1.render(scene1,camera1);
 }
 
+/* ---------- DPad (layar sentuh / HP) ---------- */
+const DKEYS={up:false,down:false,left:false,right:false};
+document.querySelectorAll('#dpad button').forEach(function(b){
+  const d=b.getAttribute('data-d');
+  if(d==='jump'){
+    b.addEventListener('pointerdown',function(e){e.preventDefault();doJump();});
+    b.addEventListener('contextmenu',function(e){e.preventDefault();});
+    return;
+  }
+  function on(e){e.preventDefault();DKEYS[d]=true;}
+  function off(e){e.preventDefault();DKEYS[d]=false;}
+  b.addEventListener('pointerdown',on);
+  b.addEventListener('pointerup',off);
+  b.addEventListener('pointercancel',off);
+  b.addEventListener('pointerleave',off);
+  b.addEventListener('contextmenu',function(e){e.preventDefault();});
+});
+function updateDpad(){
+  const w=innerWidth,h=innerHeight;
+  const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+  const show=(touch||w<768)&&$('panel').classList.contains('hide');
+  $('dpad').style.display=show?'grid':'none';
+}
+
 /* ---------- mulai ---------- */
 buildWorld1();
 resizeActive();
 tick();
 setTimeout(wave,1200);
-window.DUNIA={ready:true,showInfo:showInfo,hidePanel:hidePanel,walkToPath:walkToPath,walkToBase:walkToBase,_w1:{avatar:avatar,camera:camera1,path:function(){return W1.path;},landings:function(){return W1.landings;},setPathPos:function(p){pathPos=p;pathTarget=null;walkTarget=null;baseLeg=null;onPath=p>0.02;const v=pathPosToVec(p);avatar.group.position.set(v.x,v.y,v.z);W1.target.set(v.x,v.y+1.2,v.z);},walkState:function(){return {pathPos:pathPos,pathTarget:pathTarget,x:avatar.group.position.x,y:avatar.group.position.y,z:avatar.group.position.z};},camTarget:function(){return {x:W1.target.x,y:W1.target.y,z:W1.target.z};},hasMarker:function(){return !!W1.marker;}}};
+window.DUNIA={ready:true,showInfo:showInfo,hidePanel:hidePanel,walkToPath:walkToPath,walkToBase:walkToBase,_w1:{avatar:avatar,camera:camera1,path:function(){return W1.path;},landings:function(){return W1.landings;},setPathPos:function(p){pathPos=p;pathTarget=null;walkTarget=null;baseLeg=null;onPath=p>0.02;avY=pathPosToVec(p).y;vy=0;grounded=true;falling=false;const v=pathPosToVec(p);avatar.group.position.set(v.x,v.y,v.z);W1.target.set(v.x,v.y+1.2,v.z);},walkState:function(){return {pathPos:pathPos,pathTarget:pathTarget,x:avatar.group.position.x,y:avatar.group.position.y,z:avatar.group.position.z};},camTarget:function(){return {x:W1.target.x,y:W1.target.y,z:W1.target.z};},hasMarker:function(){return !!W1.marker;}}};
 </script>
 </body>
 </html>
