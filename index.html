@@ -846,6 +846,9 @@
     const clickableSignMeshes = [];
     const tents = [];
     const npcs = [];
+    const solids = []; // objek padat (fisika lingkaran): NPC, papan, pohon, pondok, dll — pemain tidak bisa tembus
+    let rockfallTimer = 8, windTimer = 5, windGust = 0, windDir = 0;
+    let iceToastShown = false;
     const physicsBoulders = [];
     const physicsCrates = [];
     const particleSystems = [];
@@ -1587,6 +1590,7 @@
       cabin.position.set(cabX, getTerrainHeight(cabX, cabZ), cabZ);
       cabin.rotation.y = 0.32;
       grp.add(cabin);
+      addSolid(cabX, cabZ, 5.0, 7.2); // pondok padat — tidak bisa ditembus
 
       // 2. Tenda Berkemah Roblox (Kanan Basecamp) — bisa dimasuki, ada sleeping bag & lentera
       createTent({ x: 15.5, z: 85.0, faceX: 9.5, faceZ: 82.5, color: 0x0284c7, name: 'Tenda Basecamp' });
@@ -1622,6 +1626,7 @@
       campfireLight.position.set(0, 1.6, 0);
       fireGrp.add(campfireLight);
       grp.add(fireGrp);
+      addSolid(fireX, fireZ, 1.5, 1.2); // api unggun rendah — bisa dilompati
 
       // Partikel bara api unggun naik ke udara
       const emberCount = 42;
@@ -1676,6 +1681,8 @@
       gate.position.set(gx, getTerrainHeight(gx, gz), gz);
       gate.rotation.y = -0.58;
       grp.add(gate);
+      addSolid(11.84, 72.86, 0.7, 6.2); // tiang gerbang kanan
+      addSolid(6.16, 69.14, 0.7, 6.2); // tiang gerbang kiri
 
       // 5. Hutan Pohon Pinus Roblox di Basecamp & Kaki Gunung
       const pineCoords = [
@@ -1693,6 +1700,7 @@
           pine.position.set(px, py - 0.15, pz);
           pine.rotation.y = px * 0.4;
           grp.add(pine);
+          addSolid(px, pz, 0.9 * sc, 9 * sc); // batang pohon padat
         }
       });
 
@@ -1844,6 +1852,7 @@
       scene.add(grp);
       const npc = { name: cfg.name, line: cfg.line, group: grp, armR, baseY, phase: Math.random() * 10, cooldown: 0 };
       npcs.push(npc);
+      addSolid(cfg.x, cfg.z, 1.0, 3.0); // NPC padat — tidak bisa ditembus
       return npc;
     }
 
@@ -1852,8 +1861,36 @@
       createTent({ x: 46, z: -34, faceX: 40.5, faceZ: -31, color: 0xea580c, name: 'Tenda Tengah' });
       createNPC({ x: -6, z: 78, name: 'Raka', torso: 0x0d69ac, cap: 0x16a34a, line: 'Halo! Saya Raka, pemandu basecamp. Ikuti jalur biru ke puncak, dan baca tiap papan ya!' });
       createNPC({ x: 7, z: 79, name: 'Sinta', torso: 0xec4899, cap: 0xf59e0b, line: 'Api unggun ini hangat. Duduk dulu, istirahat sebelum mendaki!' });
-      createNPC({ x: 42.5, z: -31.5, name: 'Bimo', torso: 0xea580c, cap: 0x0d69ac, line: 'Tenda ini tempat istirahat di tengah jalan. Masuk saja, di dalam ada sleeping bag dan lentera.' });
+      createNPC({ x: 49.5, z: -30.5, name: 'Bimo', torso: 0xea580c, cap: 0x0d69ac, line: 'Tenda ini tempat istirahat di tengah jalan. Masuk saja, di dalam ada sleeping bag dan lentera.' });
       createNPC({ x: -4, z: -13, name: 'Dewi', torso: 0x22c55e, cap: 0xef4444, line: 'Selamat! Kamu sampai di puncak Gunung Dermawan, 3.800 MDPL!' });
+    }
+
+    // Daftarkan objek padat: x,z = pusat, r = jari-jari, h = tinggi dari permukaan tanah.
+    // Pemain yang melompat di atas objek rendah (mis. api unggun) bisa lewat.
+    function addSolid(x, z, r, h) {
+      const baseY = getTerrainHeight(x, z);
+      solids.push({ x, z, r, top: baseY + h });
+    }
+
+    // Tabrakan fisika lingkaran-vs-lingkaran: dorong pemain keluar dari objek padat.
+    // Dorongan radial mempertahankan gerak tangensial → pemain meluncur di sepanjang permukaan.
+    function applySolidCollision() {
+      const p = playerPhysics.pos;
+      const playerR = 0.9;
+      for (const s of solids) {
+        if (p.y > s.top) continue; // pemain melompat di atas objek rendah
+        const dx = p.x - s.x, dz = p.z - s.z;
+        const minD = s.r + playerR;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < minD * minD && d2 > 1e-6) {
+          const d = Math.sqrt(d2);
+          const push = minD - d;
+          p.x += (dx / d) * push;
+          p.z += (dz / d) * push;
+        } else if (d2 <= 1e-6) {
+          p.x = s.x + minD; // tepat di tengah objek — dorong ke samping
+        }
+      }
     }
 
     // Tabrakan dinding tenda: masuk/keluar hanya lewat celah pintu.
@@ -2149,6 +2186,7 @@
       monument.add(crown);
       monument.position.set(-5.8, PEAK_HEIGHT, -14.2);
       summitGrp.add(monument);
+      addSolid(-5.8, -14.2, 2.0, 5.8); // tugu puncak padat
 
       // 3. Bendera Puncak (yang akan ditancapkan tepat ke dalam lubang soket pada Fase 4!)
       summitFlagGroup = new THREE.Group();
@@ -2195,6 +2233,7 @@
 
       // Posisi awal sebelum ditancapkan (diangkat siap tancap / di samping karakter)
       summitFlagGroup.position.set(SOCKET_POS.x, PEAK_HEIGHT + 2.8, SOCKET_POS.z);
+      addSolid(SOCKET_POS.x, SOCKET_POS.z, 0.6, 6.2); // tiang bendera padat
       summitFlagGroup.visible = false;
       summitGrp.add(summitFlagGroup);
 
@@ -2265,6 +2304,7 @@
       grp.position.set(cfg.x, y - 0.12, cfg.z);
       grp.rotation.y = cfg.rotY || 0;
       scene.add(grp);
+      addSolid(cfg.x, cfg.z, 2.8, 6.0); // papan pengumuman padat
       return grp;
     }
 
@@ -2319,6 +2359,7 @@
       const y = getTerrainHeight(cfg.x, cfg.z);
       grp.position.set(cfg.x, y - 0.1, cfg.z);
       scene.add(grp);
+      addSolid(cfg.x, cfg.z, 0.7, 3.8); // tiang penunjuk padat
       return grp;
     }
 
@@ -3739,12 +3780,13 @@
         playerPhysics.knockbackTimer -= dt;
       }
 
+      const onIce = playerPhysics.pos.y > 70; // zona salju/puncak — licin (gesekan rendah, akselerasi lambat)
       const isMoving = moveDir.lengthSq() > 0.01;
       if (isMoving && playerPhysics.knockbackTimer <= 0.2) {
         moveDir.normalize();
         const speed = 13.5 * sprint;
-        playerPhysics.vel.x = THREE.MathUtils.lerp(playerPhysics.vel.x, moveDir.x * speed, Math.min(1, dt * 10));
-        playerPhysics.vel.z = THREE.MathUtils.lerp(playerPhysics.vel.z, moveDir.z * speed, Math.min(1, dt * 10));
+        playerPhysics.vel.x = THREE.MathUtils.lerp(playerPhysics.vel.x, moveDir.x * speed, Math.min(1, dt * (onIce ? 4 : 10)));
+        playerPhysics.vel.z = THREE.MathUtils.lerp(playerPhysics.vel.z, moveDir.z * speed, Math.min(1, dt * (onIce ? 4 : 10)));
         const targetYaw = Math.atan2(moveDir.x, moveDir.z);
         // Smooth angular lerp
         let diff = targetYaw - playerPhysics.yaw;
@@ -3752,7 +3794,7 @@
         while (diff < -Math.PI) diff += Math.PI * 2;
         playerPhysics.yaw += diff * Math.min(1, dt * 11);
       } else {
-        const drag = playerPhysics.grounded ? 9.0 : 1.5;
+        const drag = playerPhysics.grounded ? (onIce ? 2.5 : 9.0) : 1.5; // es: gesekan jauh lebih kecil → meluncur
         playerPhysics.vel.x *= Math.max(0, 1 - drag * dt);
         playerPhysics.vel.z *= Math.max(0, 1 - drag * dt);
       }
@@ -3774,12 +3816,31 @@
       // Gravitasi
       playerPhysics.vel.y -= 26.5 * dt;
 
+      // Hembusan angin kencang di punggungan atas (y > 60): gaya lateral yang mendorong pemain
+      if (playerPhysics.pos.y > 60) {
+        windTimer -= dt;
+        if (windTimer <= 0) {
+          windTimer = 6 + Math.random() * 4;
+          windGust = 2.0;
+          windDir = Math.random() * Math.PI * 2;
+          showToast('💨 Angin kencang di punggungan! Tahan arahmu!');
+          spawnParticleBurst(playerPhysics.pos.clone().add(new THREE.Vector3(0, 2, 0)), 0xe0f2fe, 14, 9, -2);
+        }
+      }
+      if (windGust > 0) {
+        windGust -= dt;
+        const wStrength = 14;
+        playerPhysics.vel.x += Math.cos(windDir) * wStrength * dt;
+        playerPhysics.vel.z += Math.sin(windDir) * wStrength * dt;
+      }
+
       // Integrasi posisi + batas map 280x280
       const prevPX = playerPhysics.pos.x, prevPZ = playerPhysics.pos.z;
       playerPhysics.pos.addScaledVector(playerPhysics.vel, dt);
       playerPhysics.pos.x = THREE.MathUtils.clamp(playerPhysics.pos.x, -132, 132);
       playerPhysics.pos.z = THREE.MathUtils.clamp(playerPhysics.pos.z, -132, 132);
       applyTentCollision(prevPX, prevPZ);
+      applySolidCollision(); // objek padat: NPC, papan, pohon, pondok — tidak bisa ditembus
 
       const surf = getWalkableSurface(playerPhysics.pos.x, playerPhysics.pos.z, totalTime);
       if (playerPhysics.pos.y <= surf.y) {
@@ -3818,6 +3879,27 @@
         summitFlagGroup.position.set(SOCKET_POS.x, PEAK_HEIGHT + 0.05, SOCKET_POS.z);
         spawnFireworksCelebration();
         showToast('🎉 Selamat! Kamu menaklukkan Puncak Gunung Dermawan di Mode WASD!');
+      }
+
+      // TANTANGAN: longsoran batu berkala di Zona Batu Jatuh (y 28–62) — mode main saja
+      const inRockZone = playerPhysics.pos.y > 28 && playerPhysics.pos.y < 62;
+      if (inRockZone) {
+        rockfallTimer -= dt;
+        if (rockfallTimer <= 0) {
+          rockfallTimer = 9 + Math.random() * 4;
+          spawnPhysicsBoulder();
+          showToast('⚠ Awas! Batu jatuh dari lereng!');
+        }
+      } else if (rockfallTimer < 8) {
+        rockfallTimer = 8; // reset saat keluar zona
+      }
+
+      // Peringatan pertama kali masuk zona es
+      if (onIce && !iceToastShown) {
+        iceToastShown = true;
+        showToast('🧊 Licin! Salju di puncak — gerakmu meluncur, hati-hati!');
+      } else if (!onIce) {
+        iceToastShown = false;
       }
 
       // Telemetri HUD
@@ -4174,6 +4256,8 @@
           npcs: () => npcs.map(n => ({ name: n.name, x: Math.round(n.group.position.x * 10) / 10, z: Math.round(n.group.position.z * 10) / 10 })),
           tents: () => tents.map(t => ({ name: t.name, x: t.x, z: t.z, inside: t.inside, yaw: Math.round(t.entranceYaw * 100) / 100, r: t.radius })),
           tentHits: () => (window.__tentHits || 0),
+          solids: () => solids.length,
+          forceTimers: () => { rockfallTimer = 0.1; windTimer = 0.1; return true; },
           teleport: (x, z) => { const s = getWalkableSurface(x, z); playerPhysics.pos.set(x, s.y, z); playerPhysics.vel.set(0, 0, 0); return true; },
           enterTent: (name) => { const t = tents.find(tt => tt.name === name); if (!t) return false; playerPhysics.pos.set(t.x + Math.sin(t.entranceYaw) * 1.2, t.y, t.z + Math.cos(t.entranceYaw) * 1.2); playerPhysics.vel.set(0, 0, 0); return true; }
         };
