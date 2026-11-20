@@ -1848,13 +1848,15 @@
       grp.add(cap);
       const sp = createNameSprite(cfg.name);
       sp.position.set(0, 3.5, 0);
+      sp.scale.set(2.25, 0.5625, 1); // kompensasi skala grup agar papan nama tetap seukuran pemain
       grp.add(sp);
+      grp.scale.setScalar(1.6); // tinggi NPC 2.89 -> ~4.62, simetris dgn pemain (~4.7)
       grp.position.set(cfg.x, baseY, cfg.z);
       grp.rotation.y = cfg.rotY || 0;
       scene.add(grp);
       const npc = { name: cfg.name, line: cfg.line, group: grp, armR, baseY, phase: Math.random() * 10, cooldown: 0 };
       npcs.push(npc);
-      addSolid(cfg.x, cfg.z, 1.0, 3.0); // NPC padat — tidak bisa ditembus
+      addSolid(cfg.x, cfg.z, 1.3, 4.6); // NPC padat (skala 1.6x) — tidak bisa ditembus / dilompati
       return npc;
     }
 
@@ -1892,6 +1894,26 @@
         } else if (d2 <= 1e-6) {
           p.x = s.x + minD; // tepat di tengah objek — dorong ke samping
         }
+      }
+    }
+
+    // Pagar jembatan: pemain tidak bisa jatuh/tembus lewat sisi dek — tetap di atas jembatan.
+    // Hanya berlaku saat pemain di ketinggian dek (y > 24); di jurang bawah jembatan bebas.
+    function applyBridgeCorridor() {
+      const p = playerPhysics.pos;
+      if (p.y < 24) return;
+      const dx = p.x - BRIDGE_START.x, dz = p.z - BRIDGE_START.z;
+      const proj = dx * BRIDGE_DIR.x + dz * BRIDGE_DIR.z;
+      if (proj < 0 || proj > BRIDGE_LEN) return; // di luar jembatan — bebas masuk/keluar
+      const perpX = -BRIDGE_DIR.z, perpZ = BRIDGE_DIR.x;
+      const lat = dx * perpX + dz * perpZ; // offset lateral dari garis tengah jembatan
+      const maxLat = BRIDGE_WIDTH / 2 - 0.9; // setengah lebar dek dikurangi jari-jari pemain
+      if (lat > maxLat) {
+        p.x -= perpX * (lat - maxLat);
+        p.z -= perpZ * (lat - maxLat);
+      } else if (lat < -maxLat) {
+        p.x -= perpX * (lat + maxLat);
+        p.z -= perpZ * (lat + maxLat);
       }
     }
 
@@ -1989,6 +2011,7 @@
           post.position.set(endPt.x + perpX, endPt.y + 1.5, endPt.z + perpZ);
           post.castShadow = true;
           bridgeGrp.add(post);
+          addSolid(endPt.x + perpX, endPt.z + perpZ, 0.5, 6.0); // tiang jangkar jembatan padat
         });
       });
 
@@ -2039,6 +2062,7 @@
       cpGrp.add(cpFlag);
       cpGrp.position.set(cpX, cpY, cpZ);
       bridgeGrp.add(cpGrp);
+      addSolid(cpX, cpZ, 1.0, 5.2); // tiang bendera checkpoint padat
 
       scene.add(bridgeGrp);
     }
@@ -3843,6 +3867,7 @@
       playerPhysics.pos.z = THREE.MathUtils.clamp(playerPhysics.pos.z, -132, 132);
       applyTentCollision(prevPX, prevPZ);
       applySolidCollision(); // objek padat: NPC, papan, pohon, pondok — tidak bisa ditembus
+      applyBridgeCorridor(); // pagar sisi jembatan — tidak bisa jatuh/tembus lewat sisi dek
 
       const surf = getWalkableSurface(playerPhysics.pos.x, playerPhysics.pos.z, totalTime);
       if (playerPhysics.pos.y <= surf.y) {
