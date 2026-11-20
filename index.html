@@ -711,6 +711,14 @@
       playMode: false
     };
 
+    // Tur Panduan Perkenalan (auto-scroll): berhenti 3 detik di tiap papan/rambu
+    let tourStops = [];       // [{p, num, data}] terurut naik menurut progress
+    let tourIndex = 0;        // stop berikutnya yang akan dibaca
+    let tourPauseUntil = 0;   // akhir jeda baca (performance.now), 0 = tidak jeda
+    let tourPauseMs = 3000;   // lama membaca tiap papan
+    let tourRockslideDone = false;
+    let prevTargetP = 0;      // progress scroll frame sebelumnya (pemicu hanya saat maju)
+
     const LIGHTING_PRESETS = {
       daylight: {
         skyTop: '#2563eb',
@@ -2225,7 +2233,7 @@
           label: 'Main gamenya'
         },
         {
-          x: -10.5, z: -28.0, arrowYaw: 1.95,
+          x: 0.0, z: -22.0, arrowYaw: 1.95,
           text: '9. SHEET-MANAGER ↗',
           bg: '#dcfce7', fg: '#14532d',
           elevation: '2.520 MDPL',
@@ -2239,7 +2247,7 @@
           label: 'Lihat di GitHub'
         },
         {
-          x: 0.0, z: -22.0, arrowYaw: 1.9,
+          x: -10.5, z: -28.0, arrowYaw: 1.9,
           text: '10. OPEN-IDM ↗',
           elevation: '2.700 MDPL',
           infoLines: [
@@ -3182,9 +3190,55 @@
     let startJumpBurstDone = false;
     let summitLandBurstDone = false;
 
+    // Ubah posisi di kurva jalur (trailU 0-1) menjadi progress scroll (p 0-1)
+    function trailUToProgress(u) {
+      if (u <= 0.16) return 0.08 + (u / 0.16) * 0.10;
+      if (u <= 0.72) return 0.18 + ((u - 0.16) / 0.56) * 0.52;
+      if (u <= 0.96) return 0.70 + ((u - 0.72) / 0.24) * 0.20;
+      return 0.90 + ((u - 0.96) / 0.04) * 0.045;
+    }
+
+    // Bangun daftar pemberhentian tur dari papan/rambu (urutan jalur basecamp->puncak)
+    function buildTourStops() {
+      const order = ['TENTANG SAYA', '2. PENDIDIKAN ↑', '3. PEKERJAAN ←', '4. AI & WEB →', 'AI UNTUK SEMUA', '6. MINECHART.STUDIO →', '7. PULAU KOMUNITAS ↑', 'MISSION CONTROL', '9. SHEET-MANAGER ↗', '10. OPEN-IDM ↗', 'HALO, SAYA DERMAWAN'];
+      const seen = {};
+      const pts = [];
+      clickableSignMeshes.forEach(m => {
+        const r = m.userData.readable;
+        if (!r || seen[r.title]) return;
+        seen[r.title] = true;
+        const v = new THREE.Vector3(); m.getWorldPosition(v);
+        pts.push({ x: v.x, z: v.z, data: r });
+      });
+      pts.sort((a, b) => order.indexOf(a.data.title) - order.indexOf(b.data.title));
+      tourStops = pts.map(pt => {
+        let bestU = 0, bestD = Infinity;
+        for (let i = 0; i <= 400; i++) {
+          const u = i / 400;
+          const q = masterTrailCurve.getPointAt(u);
+          const d = (q.x - pt.x) * (q.x - pt.x) + (q.z - pt.z) * (q.z - pt.z);
+          if (d < bestD) { bestD = d; bestU = u; }
+        }
+        return { p: Math.min(0.97, trailUToProgress(bestU)), num: 0, data: pt.data };
+      });
+      tourStops.sort((a, b) => a.p - b.p);
+      tourStops.forEach((st, i) => { st.num = i + 1; });
+    }
+
+    function resetTour() {
+      tourIndex = 0; tourPauseUntil = 0; tourRockslideDone = false;
+      modalBackdrop.classList.remove('open');
+    }
+
     function updateScrollytellingMode(dt) {
-      // Auto-Scroll lembut bila aktif
-      if (THEME_CONFIG.autoScroll) {
+      // Tur panduan: jeda baca 3 detik — selama jeda, scroll ditahan
+      const nowMs = performance.now();
+      if (tourPauseUntil > 0 && nowMs >= tourPauseUntil) {
+        tourPauseUntil = 0;
+        modalBackdrop.classList.remove('open');
+      }
+      // Auto-Scroll lembut bila aktif (ditahan selama jeda baca tur)
+      if (THEME_CONFIG.autoScroll && tourPauseUntil === 0) {
         const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         const nextY = window.scrollY + (maxScroll * 0.042 * dt);
         if (nextY >= maxScroll - 2) {
@@ -3201,6 +3255,24 @@
 
       const p = smoothProgress;
       document.getElementById('progress-fill').style.width = (p * 100).toFixed(2) + '%';
+
+      // Tur panduan: sampai di papan/rambu berikutnya -> berhenti & baca 3 detik
+      // (pakai targetProgress agar pemberhentian tidak terlewat saat perangkat lambat)
+      if (THEME_CONFIG.autoScroll && tourPauseUntil === 0 && tourIndex < tourStops.length && targetProgress >= tourStops[tourIndex].p && targetProgress > prevTargetP) {
+        const stop = tourStops[tourIndex];
+        tourIndex++;
+        openBoardModal(stop.data);
+        tourPauseUntil = performance.now() + tourPauseMs;
+        showToast('Pos ' + stop.num + ' dari ' + tourStops.length + ' • ' + stop.data.title);
+        spawnParticleBurst(climber.root.position.clone().add(new THREE.Vector3(0, 2.5, 0)), 0xfbbf24, 24, 5.0, -10);
+      }
+      // Tantangan: longsoran batu saat memasuki Zona Batu Jatuh
+      if (THEME_CONFIG.autoScroll && !tourRockslideDone && p >= 0.42 && p < 0.52) {
+        tourRockslideDone = true;
+        for (let i = 0; i < 5; i++) spawnPhysicsBoulder();
+        showToast('⚠ Awas! Batu jatuh menggelinding dari lereng!');
+      }
+      prevTargetP = targetProgress;
 
       // Sembunyikan hint scroll begitu user mulai mendaki
       if (p > 0.02) {
@@ -3338,7 +3410,9 @@
       // Update Telemetri HUD
       const mdpl = Math.round(450 + (Math.max(0, pt.y) / PEAK_HEIGHT) * (2850 - 450));
       document.getElementById('tele-alt').textContent = mdpl.toLocaleString('id-ID') + ' MDPL';
-      document.getElementById('tele-phase').textContent = phaseLabel;
+      document.getElementById('tele-phase').textContent = (THEME_CONFIG.autoScroll && tourStops.length)
+        ? ('Tur ' + tourIndex + '/' + tourStops.length + ' • ' + phaseLabel)
+        : phaseLabel;
 
       // Kamera Sinematik Sesuai Pilihan Selector
       updateScrollytellingCamera(dt, pt, p, isClimbing, isPlanting);
@@ -3608,9 +3682,13 @@
 
     document.getElementById('modal-close').addEventListener('click', () => {
       modalBackdrop.classList.remove('open');
+      if (tourPauseUntil > 0) tourPauseUntil = 0; // lewati jeda baca tur
     });
     modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) modalBackdrop.classList.remove('open');
+      if (e.target === modalBackdrop) {
+        modalBackdrop.classList.remove('open');
+        if (tourPauseUntil > 0) tourPauseUntil = 0; // lewati jeda baca tur
+      }
     });
 
     // Toast Notifikasi
@@ -3639,6 +3717,18 @@
     btnAutoScroll.addEventListener('click', () => {
       if (THEME_CONFIG.playMode) togglePlayMode(false);
       THEME_CONFIG.autoScroll = !THEME_CONFIG.autoScroll;
+      if (THEME_CONFIG.autoScroll) {
+        // Mulai tur dari awal bila sedang di ujung/awal halaman
+        const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        if (window.scrollY < 50 || window.scrollY > maxScroll - 50) {
+          window.scrollTo(0, 0);
+          resetTour();
+        }
+      } else if (tourPauseUntil > 0) {
+        // Dijeda manual saat sedang membaca: tutup modal & lanjutkan nanti
+        tourPauseUntil = 0;
+        modalBackdrop.classList.remove('open');
+      }
       updateAutoScrollBtn();
     });
 
@@ -3766,6 +3856,7 @@
       buildGlowingClimbingTrail();
       buildRobloxClimber();
       buildPhysicsCrates();
+      buildTourStops();
 
       // Spawn 3 batu awal agar fisika langsung terlihat hidup
       spawnPhysicsBoulder();
@@ -3816,7 +3907,11 @@
             const m = clickableSignMeshes.find(mm => mm.userData.readable && mm.userData.readable.title === title);
             if (!m) return false;
             openBoardModal(m.userData.readable); return true;
-          }
+          },
+          tourStops: () => tourStops.map(st => ({ p: Math.round(st.p * 1000) / 1000, num: st.num, title: st.data.title })),
+          tourState: () => ({ index: tourIndex, paused: tourPauseUntil > 0, rockslide: tourRockslideDone, progress: Math.round(smoothProgress * 1000) / 1000 }),
+          boulders: () => physicsBoulders.length,
+          setPauseMs: (ms) => { tourPauseMs = ms; }
         };
       } catch (err) {
         console.error('Gagal menginisialisasi Gunung Dermawan 3D:', err);
