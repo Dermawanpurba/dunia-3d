@@ -914,11 +914,12 @@
       const baseFlat = smoothstep(66, 75, z) * (1.0 - smoothstep(32, 48, Math.abs(x)));
       h *= (1.0 - baseFlat);
 
-      // Perataan kecil di sekitar tenda tengah (46, -34) agar tenda duduk rata
-      const dMidTent = Math.hypot(x - 46, z + 34);
+      // Perataan kecil di sekitar tenda tengah (37, -35.5) agar tenda duduk rata,
+      // sejajar dgn tinggi jalur di waypoint (40.5,-31) = 51.1
+      const dMidTent = Math.hypot(x - 37, z + 35.5);
       if (dMidTent < 6.0) {
         const wMid = 1.0 - smoothstep(3.0, 6.0, dMidTent);
-        h = h * (1 - wMid) + 40.5 * wMid;
+        h = h * (1 - wMid) + 51.0 * wMid;
       }
 
       // Cekungan/depresi vertex terrain tepat di bawah lubang soket bendera puncak
@@ -1862,10 +1863,10 @@
 
     // Tenda kedua di pertengahan jalur + 4 NPC pemandu
     function buildTentsAndNPCs() {
-      createTent({ x: 46, z: -34, faceX: 40.5, faceZ: -31, color: 0xea580c, name: 'Tenda Tengah' });
+      createTent({ x: 37, z: -35.5, faceX: 40.5, faceZ: -31, color: 0xea580c, name: 'Tenda Tengah' });
       createNPC({ x: -6, z: 78, name: 'Raka', torso: 0x0d69ac, cap: 0x16a34a, line: 'Halo! Saya Raka, pemandu basecamp. Ikuti jalur biru ke puncak, dan baca tiap papan ya!' });
       createNPC({ x: 7, z: 79, name: 'Sinta', torso: 0xec4899, cap: 0xf59e0b, line: 'Api unggun ini hangat. Duduk dulu, istirahat sebelum mendaki!' });
-      createNPC({ x: 49.5, z: -30.5, name: 'Bimo', torso: 0xea580c, cap: 0x0d69ac, line: 'Tenda ini tempat istirahat di tengah jalan. Masuk saja, di dalam ada sleeping bag dan lentera.' });
+      createNPC({ x: 41.5, z: -34.5, name: 'Bimo', torso: 0xea580c, cap: 0x0d69ac, line: 'Tenda ini tempat istirahat di tengah jalan. Masuk saja, di dalam ada sleeping bag dan lentera.' });
       createNPC({ x: -4, z: -13, name: 'Dewi', torso: 0x22c55e, cap: 0xef4444, line: 'Selamat! Kamu sampai di puncak Gunung Dermawan, 3.800 MDPL!' });
     }
 
@@ -3127,14 +3128,15 @@
       const samplePts = masterTrailCurve.getPoints(160);
       samplePts.forEach(p => {
         const surf = getWalkableSurface(p.x, p.z, 0);
-        p.y = Math.max(p.y, surf.y) + 0.24;
+        p.y = Math.max(p.y, surf.y) + 0.18;
       });
       const smoothCurve = new THREE.CatmullRomCurve3(samplePts);
-      const geo = new THREE.TubeGeometry(smoothCurve, 180, 0.14, 6, false);
+      // Jalur tebal & solid agar jelas terlihat saat menanjak
+      const geo = new THREE.TubeGeometry(smoothCurve, 180, 0.32, 6, false);
       const mat = new THREE.MeshBasicMaterial({
         color: 0x38bdf8,
         transparent: true,
-        opacity: 0.48
+        opacity: 0.9
       });
       glowingTrailMesh = new THREE.Mesh(geo, mat);
       scene.add(glowingTrailMesh);
@@ -3283,7 +3285,7 @@
       autoBoulderTimer -= dt;
       if (autoBoulderTimer <= 0) {
         spawnPhysicsBoulder();
-        autoBoulderTimer = 4.2 + Math.random() * 2.5;
+        autoBoulderTimer = 8 + Math.random() * 5; // lebih jarang: 8-13 dtk
       }
 
       // 1. Update Batu Gelinding & Memantul
@@ -3353,9 +3355,10 @@
           const distP = b.pos.distanceTo(playerCenter);
           if (distP < b.radius + 1.05) {
             const push = _capDelta.subVectors(playerCenter, b.pos).normalize();
-            playerPhysics.vel.x = push.x * 16;
-            playerPhysics.vel.z = push.z * 16;
-            playerPhysics.vel.y = 9.5;
+            // Knockback lembut: tersandung, bukan terlempar jauh ke bawah
+            playerPhysics.vel.x = push.x * 7;
+            playerPhysics.vel.z = push.z * 7;
+            playerPhysics.vel.y = 4.5;
             playerPhysics.grounded = false;
             playerPhysics.knockbackTimer = 0.75;
             spawnParticleBurst(playerCenter, 0xfef08a, 16, 6.0, -14);
