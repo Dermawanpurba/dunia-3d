@@ -1909,6 +1909,10 @@
       const perpX = -BRIDGE_DIR.z, perpZ = BRIDGE_DIR.x;
       const lat = dx * perpX + dz * perpZ; // offset lateral dari garis tengah jembatan
       const maxLat = BRIDGE_WIDTH / 2 - 0.9; // setengah lebar dek dikurangi jari-jari pemain
+      // Hanya jepit jika pemain memang di dekat dek. Tanpa batas ini, pemain di
+      // jalur puncak (offset lateral ~55) ikut terjepit ke tengah jembatan lalu
+      // jatuh dari ketinggian — itulah bug 'terlempar ke bawah'.
+      if (Math.abs(lat) > maxLat + 2) return;
       if (lat > maxLat) {
         p.x -= perpX * (lat - maxLat);
         p.z -= perpZ * (lat - maxLat);
@@ -3358,11 +3362,10 @@
           const distP = b.pos.distanceTo(playerCenter);
           if (distP < b.radius + 1.05) {
             const push = _capDelta.subVectors(playerCenter, b.pos).normalize();
-            // Knockback lembut: tersandung, bukan terlempar jauh ke bawah
-            playerPhysics.vel.x = push.x * 7;
-            playerPhysics.vel.z = push.z * 7;
-            playerPhysics.vel.y = 4.5;
-            playerPhysics.grounded = false;
+            // Dorongan pelan di tanah saja — TIDAK melontarkan ke udara
+            // (melontarkan = pemain melayang jauh dari ketinggian)
+            playerPhysics.vel.x = push.x * 5;
+            playerPhysics.vel.z = push.z * 5;
             playerPhysics.knockbackTimer = 0.75;
             spawnParticleBurst(playerCenter, 0xfef08a, 16, 6.0, -14);
             showToast('💥 Terserempet batu fisika! Jaga keseimbangan!');
@@ -3826,7 +3829,7 @@
         while (diff < -Math.PI) diff += Math.PI * 2;
         playerPhysics.yaw += diff * Math.min(1, dt * 11);
       } else {
-        const drag = playerPhysics.grounded ? (onIce ? 2.5 : 9.0) : 1.5; // es: gesekan jauh lebih kecil → meluncur
+        const drag = playerPhysics.grounded ? (onIce ? 4.0 : 9.0) : 1.5; // es: masih licin tapi lebih terkendali
         playerPhysics.vel.x *= Math.max(0, 1 - drag * dt);
         playerPhysics.vel.z *= Math.max(0, 1 - drag * dt);
       }
@@ -3848,8 +3851,9 @@
       // Gravitasi
       playerPhysics.vel.y -= 26.5 * dt;
 
-      // Hembusan angin kencang di punggungan atas (y > 60): gaya lateral yang mendorong pemain
-      if (playerPhysics.pos.y > 60) {
+      // Hembusan angin di punggungan atas (60<y<=70) saja; di zona salju puncak
+      // (y>70) angin dimatikan agar pemain bisa sampai puncak mengikuti garis
+      if (playerPhysics.pos.y > 60 && playerPhysics.pos.y <= 70) {
         windTimer -= dt;
         if (windTimer <= 0) {
           windTimer = 6 + Math.random() * 4;
