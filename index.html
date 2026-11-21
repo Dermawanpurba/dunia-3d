@@ -2073,7 +2073,10 @@
      */
     function buildPos2ClimbingWall() {
       const cliffGrp = new THREE.Group();
-      const slabMat = new THREE.MeshStandardMaterial({ map: studRockTex, color: 0x475569, roughness: 0.92 });
+      // Anak tangga batu hangat BERGANTIAN agar tiap pijakan terbaca jelas
+      // (sebelumnya semua abu-abu gelap sama -> terlihat seperti menara gelap)
+      const slabMatA = new THREE.MeshStandardMaterial({ map: studRockTex, color: 0xe8b06a, roughness: 0.85 });
+      const slabMatB = new THREE.MeshStandardMaterial({ map: studRockTex, color: 0x9a6b3f, roughness: 0.85 });
       const holdColors = [0xef4444, 0xf59e0b, 0x3b82f6, 0x22c55e, 0xa855f7, 0xec4899];
 
       // Jalur tebing curam dari (39.5, y=31, -30.5) mendaki ke (25.5, y=50.5, -24.0)
@@ -2085,10 +2088,10 @@
         const p = new THREE.Vector3().lerpVectors(cliffStart, cliffEnd, u);
         p.y = getTerrainHeight(p.x, p.z) + 0.35;
 
-        // Lempeng batu berundak
+        // Lempeng batu berundak — anak tangga, warna bergantian biar jelas
         const slab = new THREE.Mesh(
           new THREE.BoxGeometry(5.5 + (i % 3) * 0.9, 1.8, 3.2),
-          slabMat
+          i % 2 === 0 ? slabMatA : slabMatB
         );
         slab.position.set(p.x, p.y - 0.85, p.z);
         slab.rotation.y = 1.15;
@@ -2104,12 +2107,12 @@
           p.z - Math.sin(1.15) * sideOffset
         );
         const hold = new THREE.Mesh(
-          new THREE.BoxGeometry(0.68, 0.36, 0.55),
+          new THREE.BoxGeometry(1.05, 0.5, 0.8),
           new THREE.MeshStandardMaterial({
             color: holdColors[i % holdColors.length],
             roughness: 0.45,
             emissive: holdColors[i % holdColors.length],
-            emissiveIntensity: 0.16
+            emissiveIntensity: 0.5
           })
         );
         hold.position.copy(holdPos);
@@ -3850,7 +3853,7 @@
         windTimer -= dt;
         if (windTimer <= 0) {
           windTimer = 6 + Math.random() * 4;
-          windGust = 2.0;
+          windGust = 1.5; // lebih singkat
           windDir = Math.random() * Math.PI * 2;
           showToast('💨 Angin kencang di punggungan! Tahan arahmu!');
           spawnParticleBurst(playerPhysics.pos.clone().add(new THREE.Vector3(0, 2, 0)), 0xe0f2fe, 14, 9, -2);
@@ -3858,7 +3861,7 @@
       }
       if (windGust > 0) {
         windGust -= dt;
-        const wStrength = 14;
+        const wStrength = 6; // dilembutkan: dorongan total 9 u/s, masih bisa dilawan
         playerPhysics.vel.x += Math.cos(windDir) * wStrength * dt;
         playerPhysics.vel.z += Math.sin(windDir) * wStrength * dt;
       }
